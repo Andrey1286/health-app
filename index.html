@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Диалог с врачом — оценка рисков</title>
+<style>
+  :root {
+    --bg: linear-gradient(135deg, #e0eafc, #cfdef3);
+    --card: #fff;
+    --text: #2d3748;
+    --text-soft: #4a5568;
+    --muted: #718096;
+    --border: #cbd5e0;
+    --header: #2c5282;
+    --header-text: #fff;
+    --bubble: #f7fafc;
+    --btn: #2c5282;
+    --btn-hover: #2a4365;
+    --btn-sec: #edf2f7;
+    --btn-sec-text: #2d3748;
+    --risk-low: #c6f6d5;
+    --risk-low-t: #22543d;
+    --risk-med: #feebc8;
+    --risk-med-t: #7b341e;
+    --risk-high: #fed7d7;
+    --risk-high-t: #742a2a;
+    --missing: #fff5b1;
+    --missing-b: #f6e05e;
+    --credentials-bg: #f7fafc;
+    --input-bg: #fff;
+    --accent: #38a169;
+    --taplink: #6b46c1;
+    --taplink-hover: #553c9a;
+    --hint-bg: #ebf8ff;
+    --hint-border: #90cdf4;
+    --hint-text: #2c5282;
+  }
+  body.dark {
+    --bg: linear-gradient(135deg, #1a202c, #2d3748);
+    --card: #2d3748;
+    --text: #e2e8f0;
+    --text-soft: #cbd5e0;
+    --muted: #a0aec0;
+    --border: #4a5568;
+    --header: #1a365d;
+    --header-text: #fff;
+    --bubble: #1a202c;
+    --btn: #4299e1;
+    --btn-hover: #3182ce;
+    --btn-sec: #4a5568;
+    --btn-sec-text: #e2e8f0;
+    --risk-low: #22543d;
+    --risk-low-t: #c6f6d5;
+    --risk-med: #7b341e;
+    --risk-med-t: #feebc8;
+    --risk-high: #742a2a;
+    --risk-high-t: #fed7d7;
+    --missing: #744210;
+    --missing-b: #d69e2e;
+    --credentials-bg: #1a202c;
+    --input-bg: #1a202c;
+    --accent: #48bb78;
+    --taplink: #9f7aea;
+    --taplink-hover: #805ad5;
+    --hint-bg: #1a365d;
+    --hint-border: #2b6cb0;
+    --hint-text: #90cdf4;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    color: var(--text);
+    transition: background 0.3s, color 0.3s;
+  }
+  .app {
+    width: 100%;
+    max-width: 760px;
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .header {
+    background: var(--header);
+    color: var(--header-text);
+    padding: 16px 24px;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-controls { display: flex; gap: 8px; }
+  .reset-btn, .theme-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .reset-btn:hover, .theme-btn:hover { background: rgba(255,255,255,0.3); }
+  .content { padding: 24px; min-height: 400px; }
+
+  .fade-in { animation: fadeIn 0.4s ease-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .stagger > * { opacity: 0; animation: fadeIn 0.4s ease-out forwards; }
+  .stagger > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.15s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.25s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.35s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.45s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.55s; }
+  .stagger > *:nth-child(7) { animation-delay: 0.65s; }
+  .stagger > *:nth-child(8) { animation-delay: 0.75s; }
+
+  .progress {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: #38a169;
+    transition: width 0.4s;
+  }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--input-bg);
+    color: var(--text);
+  }
+  .field input::placeholder { color: var(--muted); }
+  .field .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 140px; }
+  .btn {
+    background: var(--btn);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s, transform 0.1s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn:hover { background: var(--btn-hover); }
+  .btn:active { transform: scale(0.98); }
+  .btn.secondary { background: var(--btn-sec); color: var(--btn-sec-text); }
+  .btn.secondary:hover { background: var(--border); }
+  .btn.small { padding: 8px 16px; font-size: 13px; }
+  .btn.accent { background: var(--accent); }
+  .btn.accent:hover { background: #2f855a; }
+  .btn.taplink { background: var(--taplink); font-weight: 600; }
+  .btn.taplink:hover { background: var(--taplink-hover); }
+  .actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  .intro { text-align: center; padding: 20px 0; }
+  .intro-avatar { width: 150px; height: 200px; margin: 0 auto 20px; }
+  .intro-avatar svg { width: 100%; height: 100%; }
+  .intro h2 { color: var(--btn); margin-bottom: 10px; }
+  .intro p { color: var(--text-soft); line-height: 1.6; margin-bottom: 15px; }
+  .intro .credentials {
+    background: var(--credentials-bg);
+    border-left: 4px solid var(--btn);
+    padding: 15px;
+    margin: 20px 0;
+    text-align: left;
+    border-radius: 0 8px 8px 0;
+  }
+  .intro .credentials h3 { margin-top: 0; color: var(--btn); font-size: 16px; }
+  .intro .credentials ul { margin: 10px 0; padding-left: 20px; }
+  .intro .credentials li { margin: 8px 0; color: var(--text-soft); }
+
+  .dialog { display: flex; gap: 16px; flex-wrap: wrap; }
+  .avatar { flex-shrink: 0; width: 120px; height: 160px; }
+  .avatar svg { width: 100%; height: 100%; }
+  .mouth {
+    transform-origin: center;
+    animation: talk 0.3s infinite alternate;
+    animation-play-state: paused;
+  }
+  .mouth.active { animation-play-state: running; }
+  @keyframes talk { from { transform: scaleY(1); } to { transform: scaleY(0.4); } }
+  .arm { transform-origin: 60px 90px; animation: gesture 2s infinite ease-in-out; }
+  @keyframes gesture { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-8deg); } }
+  .bubble {
+    flex: 1;
+    background: var(--bubble);
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    min-width: 280px;
+    transition: background 0.3s;
+  }
+  .options { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .option {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 14px;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .option:hover { border-color: var(--btn); background: var(--bubble); transform: translateX(4px); }
+  .option.taplink-opt {
+    border-color: var(--taplink);
+    background: var(--taplink);
+    color: #fff;
+    font-weight: 600;
+  }
+  .option.taplink-opt:hover { background: var(--taplink-hover); }
+  .risk { display: inline-block; padding: 3px 10px; border-radius: 4px; font-weight: 600; font-size: 13px; }
+  .risk.low { background: var(--risk-low); color: var(--risk-low-t); }
+  .risk.med { background: var(--risk-med); color: var(--risk-med-t); }
+  .risk.high { background: var(--risk-high); color: var(--risk-high-t); }
+  .missing-data {
+    background: var(--missing);
+    border: 1px solid var(--missing-b);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .info-hint {
+    background: var(--hint-bg);
+    border-left: 3px solid var(--hint-border);
+    padding: 10px 12px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 13px;
+    color: var(--hint-text);
+    line-height: 1.5;
+  }
+  .good-news {
+    background: var(--risk-low);
+    border-left: 4px solid var(--risk-low-t);
+    padding: 12px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 14px;
+    color: var(--risk-low-t);
+    line-height: 1.5;
+  }
+
+  .risk-scale {
+    margin: 10px 0 14px 0;
+    padding: 10px 12px;
+    background: var(--bubble);
+    border-radius: 8px;
+  }
+  .risk-scale-bar {
+    position: relative;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    margin-bottom: 6px;
+  }
+  .risk-scale-bar .seg { flex: 1; }
+  .risk-scale-bar .seg.low { background: #48bb78; }
+  .risk-scale-bar .seg.med { background: #ed8936; }
+  .risk-scale-bar .seg.high { background: #f56565; }
+  .risk-scale-bar .seg.vhigh { background: #c53030; }
+  .risk-scale-marker {
+    position: absolute;
+    top: -4px;
+    width: 4px;
+    height: 28px;
+    background: #1a202c;
+    border-radius: 2px;
+    transition: left 0.5s;
+    box-shadow: 0 0 0 2px #fff;
+  }
+  .risk-scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .report-section {
+    background: var(--bubble);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .report-section h3 {
+    margin-top: 0;
+    color: var(--btn);
+    font-size: 16px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .report-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .report-item:last-child { border-bottom: none; }
+  .report-item .val-block { text-align: right; }
+  .report-item .ref-line {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-weight: 400;
+  }
+  .bio-age-display {
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, var(--btn), #2b6cb0);
+    color: #fff;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  .bio-age-number {
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .bio-age-label { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+  .bio-age-diff {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 5px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: var(--bubble);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .checklist-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .checklist-item.done { opacity: 0.6; }
+  .checklist-item.done .test-name { text-decoration: line-through; }
+  .test-name { flex: 1; font-weight: 500; }
+  .test-reason { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .test-status {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: var(--risk-med);
+    color: var(--risk-med-t);
+    white-space: nowrap;
+  }
+  .test-status.done {
+    background: var(--risk-low);
+    color: var(--risk-low-t);
+  }
+
+  .whatif-slider { margin-bottom: 16px; }
+  .whatif-slider label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .whatif-slider input[type="range"] {
+    width: 100%;
+    accent-color: var(--btn);
+  }
+  .whatif-slider .value {
+    font-weight: 600;
+    color: var(--btn);
+  }
+  .whatif-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bubble);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .whatif-toggle input { width: 20px; height: 20px; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .app { box-shadow: none; max-width: 100%; }
+    .header, .reset-btn, .theme-btn, .btn, .actions, .avatar { display: none !important; }
+    .content { padding: 0; }
+    .bubble { background: #fff; }
+    .report-section { break-inside: avoid; }
+    .bio-age-display { background: #2c5282 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span>Онлайн-консультация: оценка рисков здоровья</span>
+    <div class="header-controls">
+      <button class="theme-btn" id="themeBtn">🌙</button>
+      <button class="reset-btn" id="resetBtn">Сбросить</button>
+    </div>
+  </div>
+  <div class="content" id="content">
+    <p style="text-align:center;color:var(--muted)">Загрузка...</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const TAPLINK_URL = 'https://pystogovas.taplink.ws/';
+
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+  }
+  function playClick() {
+    initAudio();
+    if (!audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.value = 800; osc.type = 'sine';
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+    } catch(e) {}
+  }
+  function playSuccess() {
+    initAudio();
+    if (!audioCtx) return;
+    try {
+      [523, 659, 784].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.value = freq; osc.type = 'sine';
+        const t = audioCtx.currentTime + i * 0.08;
+        gain.gain.setValueAtTime(0.06, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        osc.start(t); osc.stop(t + 0.15);
+      });
+    } catch(e) {}
+  }
+
+  const themeBtn = document.getElementById('themeBtn');
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark');
+    themeBtn.textContent = '☀️';
+  }
+  themeBtn.addEventListener('click', function() {
+    playClick();
+    document.body.classList.toggle('dark');
+    const isDark = document.body.classList.contains('dark');
+    themeBtn.textContent = isDark ? '☀️' : '🌙';
+    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch(e) {}
+  });
+
+  const storage = {
+    get: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+    set: function(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },
+    remove: function(k) { try { localStorage.removeItem(k); } catch(e) {} }
+  };
+
+  const patient = {
+    name: '', sex: 'm', age: 0,
+    smoking: false, alcohol: 0,
+    height: 0, weight: 0, waist: 0,
+    activity: 0, vegetables: 0,
+    hypertension: false, glucoseHistory: false,
+    familyDiabetes: false, familyCancer: false,
+    familyTEP: false, familyHipFracture: false,
+    sbp: 0,
+    glucose: null, hba1c: null,
+    cholesterol: null, ldl: null, hdl: null, triglycerides: null,
+    alt: null, ast: null, platelets: null,
+    creatinine: null
+  };
+
+  const saved = storage.get('patientData');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data && typeof data === 'object') {
+        Object.keys(data).forEach(function(k) {
+          if (patient.hasOwnProperty(k)) patient[k] = data[k];
+        });
+      }
+    } catch(e) {}
+  }
+  function savePatient() { storage.set('patientData', JSON.stringify(patient)); }
+
+  // Вспомогательная функция для строгой привязки позиции ползунка к уровню риска
+  function getPct(level, isVeryHigh) {
+    if (level === 'low') return 15;      // Центр зелёной зоны (0-25%)
+    if (level === 'med') return 37;      // Центр оранжевой зоны (25-50%)
+    if (isVeryHigh) return 87;           // Центр тёмно-красной зоны (75-100%)
+    return 62;                           // Центр красной зоны (50-75%)
+  }
+
+  const refs = {
+    glucose: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v < 5.6) return { level: 'low', text: 'Норма', ref: 'норма: 4.1–5.6 ммоль/л', pct: getPct('low') };
+      if (v < 7.0) return { level: 'med', text: 'Пограничное (предиабет)', ref: 'норма: 4.1–5.6, диабет: ≥7.0', pct: getPct('med') };
+      return { level: 'high', text: 'Высокий (сахарный диабет)', ref: 'диагностический порог: ≥7.0 ммоль/л', pct: getPct('high') };
+    },
+    hba1c: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v < 5.7) return { level: 'low', text: 'Норма', ref: 'норма: <5.7%', pct: getPct('low') };
+      if (v < 6.5) return { level: 'med', text: 'Пограничное (предиабет)', ref: 'предиабет: 5.7–6.4%', pct: getPct('med') };
+      return { level: 'high', text: 'Высокий (диабет)', ref: 'диагноз диабета: ≥6.5%', pct: getPct('high') };
+    },
+    cholesterol: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v < 5.0) return { level: 'low', text: 'Норма', ref: 'норма: <5.0 ммоль/л', pct: getPct('low') };
+      if (v < 6.2) return { level: 'med', text: 'Пограничное', ref: 'пограничное: 5.0–6.2', pct: getPct('med') };
+      return { level: 'high', text: 'Высокий', ref: 'высокий: ≥6.2 ммоль/л', pct: getPct('high') };
+    },
+    ldl: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v < 3.0) return { level: 'low', text: 'Норма', ref: 'норма для низкого риска: <3.0', pct: getPct('low') };
+      if (v < 4.1) return { level: 'med', text: 'Пограничное', ref: 'пограничное: 3.0–4.0', pct: getPct('med') };
+      return { level: 'high', text: 'Высокий', ref: 'высокий: ≥4.1 ммоль/л', pct: getPct('high') };
+    },
+    hdl: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const min = patient.sex === 'f' ? 1.2 : 1.0;
+      if (v >= min) return { level: 'low', text: 'Норма', ref: 'норма: ≥' + min + ' ммоль/л (чем выше — тем лучше)', pct: getPct('low') };
+      if (v >= min - 0.2) return { level: 'med', text: 'Погранично снижен', ref: 'низкий: <' + min, pct: getPct('med') };
+      return { level: 'high', text: 'Снижен (плохо)', ref: 'низкий ЛПВП — фактор риска', pct: getPct('high') };
+    },
+    triglycerides: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v < 1.7) return { level: 'low', text: 'Норма', ref: 'норма: <1.7 ммоль/л', pct: getPct('low') };
+      if (v < 2.3) return { level: 'med', text: 'Пограничное', ref: 'пограничное: 1.7–2.2', pct: getPct('med') };
+      return { level: 'high', text: 'Высокий', ref: 'высокий: ≥2.3 ммоль/л', pct: getPct('high') };
+    },
+    creatinine: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const lo = patient.sex === 'f' ? 44 : 62;
+      const hi = patient.sex === 'f' ? 80 : 106;
+      if (v >= lo && v <= hi) return { level: 'low', text: 'Норма', ref: 'норма: ' + lo + '–' + hi + ' мкмоль/л', pct: getPct('low') };
+      if (v > hi && v <= hi + 20) return { level: 'med', text: 'Погранично повышён', ref: 'норма: ' + lo + '–' + hi, pct: getPct('med') };
+      if (v > hi) return { level: 'high', text: 'Повышен', ref: 'требуется оценка СКФ', pct: getPct('high') };
+      return { level: 'med', text: 'Снижен', ref: 'норма: ' + lo + '–' + hi, pct: getPct('med') };
+    },
+    alt: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const hi = patient.sex === 'f' ? 32 : 40;
+      if (v < hi) return { level: 'low', text: 'Норма', ref: 'норма: <' + hi + ' Ед/л', pct: getPct('low') };
+      if (v < hi * 2) return { level: 'med', text: 'Погранично повышён', ref: 'норма: <' + hi, pct: getPct('med') };
+      return { level: 'high', text: 'Повышен', ref: 'требуется консультация', pct: getPct('high') };
+    },
+    ast: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const hi = patient.sex === 'f' ? 32 : 40;
+      if (v < hi) return { level: 'low', text: 'Норма', ref: 'норма: <' + hi + ' Ед/л', pct: getPct('low') };
+      if (v < hi * 2) return { level: 'med', text: 'Погранично повышён', ref: 'норма: <' + hi, pct: getPct('med') };
+      return { level: 'high', text: 'Повышен', ref: 'требуется консультация', pct: getPct('high') };
+    },
+    platelets: function(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v >= 180 && v <= 320) return { level: 'low', text: 'Норма', ref: 'норма: 180–320 ×10⁹/л', pct: getPct('low') };
+      if (v >= 150 && v < 180) return { level: 'med', text: 'Погранично снижено', ref: 'норма: 180–320', pct: getPct('med') };
+      if (v > 320 && v <= 400) return { level: 'med', text: 'Погранично повышено', ref: 'норма: 180–320', pct: getPct('med') };
+      return { level: 'high', text: 'Отклонение', ref: 'норма: 180–320 ×10⁹/л', pct: getPct('high') };
+    },
+    sbp: function(v) {
+      if (v === null || v === undefined || v === '' || v === 0) return null;
+      if (v < 130) return { level: 'low', text: 'Норма', ref: 'оптимальное: <130 мм рт.ст.', pct: getPct('low') };
+      if (v < 140) return { level: 'med', text: 'Повышенное', ref: 'повышенное: 130–139', pct: getPct('med') };
+      if (v < 180) return { level: 'high', text: 'Гипертония', ref: 'гипертония: ≥140', pct: getPct('high') };
+      return { level: 'high', text: 'Высокая гипертония', ref: 'критический уровень: ≥180', pct: getPct('high', true) };
+    },
+    bmi: function(v) {
+      if (!v) return null;
+      if (v < 18.5) return { level: 'med', text: 'Недостаточный вес', ref: 'норма: 18.5–24.9', pct: getPct('med') };
+      if (v < 25) return { level: 'low', text: 'Норма', ref: 'норма: 18.5–24.9', pct: getPct('low') };
+      if (v < 30) return { level: 'med', text: 'Избыточный вес', ref: 'избыток: 25–29.9', pct: getPct('med') };
+      return { level: 'high', text: 'Ожирение', ref: 'ожирение: ≥30', pct: getPct('high') };
+    },
+    whtr: function(v) {
+      if (v === null || v === undefined) return null;
+      if (v < 0.5) return { level: 'low', text: 'Норма', ref: 'норма: <0.5', pct: getPct('low') };
+      if (v < 0.6) return { level: 'med', text: 'Пограничное', ref: 'пограничное: 0.5–0.6', pct: getPct('med') };
+      return { level: 'high', text: 'Высокое', ref: 'высокое: ≥0.6', pct: getPct('high') };
+    }
+  };
+
+  const calc = {
+    bmi: function() {
+      return (patient.weight && patient.height) ? patient.weight / Math.pow(patient.height/100, 2) : null;
+    },
+    whtr: function() {
+      return (patient.waist && patient.height) ? patient.waist / patient.height : null;
+    },
+    whtrRisk: function() {
+      const r = calc.whtr();
+      if (r === null) return { level: 'med', text: 'Нет данных' };
+      if (r < 0.5) return { level: 'low', text: 'Норма' };
+      if (r < 0.6) return { level: 'med', text: 'Повышен' };
+      return { level: 'high', text: 'Высокий' };
+    },
+    findrisk: function() {
+      if (!patient.age || !patient.weight || !patient.height || !patient.waist) return null;
+      let s = 0;
+      if (patient.age < 45) s += 0;
+      else if (patient.age < 55) s += 2;
+      else if (patient.age < 65) s += 3;
+      else s += 4;
+      const bmi = calc.bmi();
+      if (bmi < 25) s += 0; else if (bmi < 30) s += 1; else s += 3;
+      if (patient.sex === 'm') {
+        if (patient.waist < 94) s += 0; else if (patient.waist < 102) s += 3; else s += 4;
+      } else {
+        if (patient.waist < 80) s += 0; else if (patient.waist < 88) s += 3; else s += 4;
+      }
+      if (patient.activity < 1) s += 2;
+      if (patient.vegetables < 1) s += 1;
+      if (patient.hypertension) s += 2;
+      if (patient.glucoseHistory) s += 5;
+      if (patient.familyDiabetes) s += 3;
+      return s;
+    },
+    findriskText: function() {
+      const s = calc.findrisk();
+      if (s === null) return { level: 'med', text: 'Недостаточно данных', pct: null };
+      if (s < 7) return { level: 'low', text: 'Низкий (' + s + ' баллов) — ~1% на 10 лет', pct: getPct('low') };
+      if (s < 15) return { level: 'med', text: 'Умеренный (' + s + ') — ~4-17% на 10 лет', pct: getPct('med') };
+      if (s < 21) return { level: 'high', text: 'Высокий (' + s + ') — ~33% на 10 лет', pct: getPct('high') };
+      return { level: 'high', text: 'Очень высокий (' + s + ') — ~50% на 10 лет', pct: getPct('high', true) };
+    },
+    fib4: function() {
+      if (!patient.alt || !patient.ast || !patient.platelets || !patient.age) return null;
+      return (patient.age * patient.ast) / (patient.platelets * Math.sqrt(patient.alt));
+    },
+    fib4Text: function() {
+      const v = calc.fib4();
+      if (v === null) return { level: 'med', text: 'Недостаточно данных', pct: null };
+      if (v < 1.3) return { level: 'low', text: 'Низкий риск фиброза (' + v.toFixed(2) + ')', pct: getPct('low') };
+      if (v < 2.67) return { level: 'med', text: 'Промежуточный (' + v.toFixed(2) + ') — нужно уточнение', pct: getPct('med') };
+      return { level: 'high', text: 'Высокий (' + v.toFixed(2) + ') — вероятен фиброз', pct: getPct('high') };
+    },
+    egfr: function() {
+      if (!patient.creatinine || !patient.age || !patient.sex) return null;
+      const scr = patient.creatinine / 88.4;
+      const kappa = patient.sex === 'f' ? 0.7 : 0.9;
+      const alpha = patient.sex === 'f' ? -0.241 : -0.302;
+      const min = Math.min(scr / kappa, 1);
+      const max = Math.max(scr / kappa, 1);
+      return 142 * Math.pow(min, alpha) * Math.pow(max, -1.200) * Math.pow(0.9938, patient.age) * (patient.sex === 'f' ? 1.012 : 1);
+    },
+    egfrText: function() {
+      const v = calc.egfr();
+      if (v === null) return { level: 'med', text: 'Нет данных по креатинину', pct: null };
+      // Здесь pct отражает РИСК. Высокая СКФ = низкий риск (15%), низкая СКФ = высокий риск (62-87%)
+      if (v >= 90) return { level: 'low', text: 'Норма (СКФ ' + Math.round(v) + ')', pct: getPct('low') };
+      if (v >= 60) return { level: 'med', text: 'Незначительно снижена (СКФ ' + Math.round(v) + ')', pct: getPct('med') };
+      if (v >= 45) return { level: 'high', text: 'Умеренно снижена (СКФ ' + Math.round(v) + ')', pct: getPct('high') };
+      return { level: 'high', text: 'Значительно снижена (СКФ ' + Math.round(v) + ') — нужна консультация', pct: getPct('high', true) };
+    },
+    score2: function() {
+      if (!patient.sbp || !patient.cholesterol || !patient.age || !patient.sex) return null;
+      let risk = 1;
+      if (patient.age >= 50) risk *= 1.5;
+      if (patient.age >= 60) risk *= 1.5;
+      if (patient.age >= 70) risk *= 1.3;
+      if (patient.sex === 'm') risk *= 1.3;
+      if (patient.smoking) risk *= 1.8;
+      if (patient.sbp >= 140) risk *= 1.5;
+      if (patient.sbp >= 160) risk *= 1.4;
+      if (patient.cholesterol >= 6) risk *= 1.3;
+      if (patient.cholesterol >= 7) risk *= 1.2;
+      
+      if (risk < 2.5) return { level: 'low', text: 'Низкий (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('low') };
+      if (risk < 7.5) return { level: 'med', text: 'Умеренный (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('med') };
+      if (risk < 10) return { level: 'high', text: 'Высокий (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('high') };
+      return { level: 'high', text: 'Очень высокий (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('high', true) };
+    },
+    score2diabetes: function() {
+      if (!patient.hba1c || !patient.age || !patient.weight || !patient.height) return null;
+      let risk = 0.5;
+      if (patient.age >= 40) risk *= 1.5;
+      if (patient.age >= 60) risk *= 1.3;
+      if (patient.hba1c >= 5.7) risk *= 2;
+      if (patient.hba1c >= 6.0) risk *= 1.5;
+      const bmi = calc.bmi();
+      if (bmi && bmi >= 25) risk *= 1.5;
+      if (bmi && bmi >= 30) risk *= 1.5;
+      if (patient.smoking) risk *= 1.2;
+      const egfr = calc.egfr();
+      if (egfr && egfr < 60) risk *= 1.3;
+      
+      if (risk < 3) return { level: 'low', text: 'Низкий (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('low') };
+      if (risk < 10) return { level: 'med', text: 'Умеренный (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('med') };
+      if (risk < 20) return { level: 'high', text: 'Высокий (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('high') };
+      return { level: 'high', text: 'Очень высокий (~' + risk.toFixed(1) + '% на 10 лет)', pct: getPct('high', true) };
+    },
+    biologicalAge: function() {
+      if (!patient.age) return null;
+      let bio = patient.age;
+      if (patient.smoking) bio += 4;
+      const bmi = calc.bmi();
+      if (bmi && bmi >= 30) bio += 5;
+      else if (bmi && bmi >= 25) bio += 2;
+      if (patient.sbp >= 140) bio += 3;
+      else if (patient.sbp >= 130) bio += 1;
+      if (patient.activity < 1) bio += 2;
+      else if (patient.activity >= 3) bio -= 1;
+      const whtr = calc.whtr();
+      if (whtr && whtr >= 0.6) bio += 3;
+      else if (whtr && whtr >= 0.5) bio += 1;
+      if (patient.cholesterol && patient.cholesterol >= 6) bio += 2;
+      if (patient.familyCancer) bio += 1;
+      if (patient.alcohol > 7) bio += 1;
+      if (patient.vegetables < 3) bio += 1;
+      bio = Math.round(bio);
+      bio = Math.max(18, Math.min(patient.age + 20, bio));
+      return bio;
+    }
+  };
+
+  function renderRiskScale(pct, label) {
+    if (pct === null || pct === undefined) return '';
+    const clamped = Math.max(0, Math.min(100, pct));
+    return '<div class="risk-scale">' +
+      '<div class="risk-scale-bar">' +
+        '<div class="seg low"></div><div class="seg med"></div><div class="seg high"></div><div class="seg vhigh"></div>' +
+        '<div class="risk-scale-marker" style="left:calc(' + clamped + '% - 2px)"></div>' +
+      '</div>' +
+      '<div class="risk-scale-labels"><span>Низкий</span><span>Умеренный</span><span>Высокий</span><span>Очень высокий</span></div>' +
+      (label ? '<div style="text-align:center;margin-top:6px;font-size:12px;color:var(--muted)">' + label + '</div>' : '') +
+    '</div>';
+  }
+
+  const dialogNodes = {
+    start: {
+      text: function() { return 'Здравствуйте, ' + patient.name + '! Я изучил ваши данные. Давайте поговорим о вашем здоровье. Какие риски вас интересуют?'; },
+      options: [
+        { label: 'Сердце и сосуды (SCORE2)', next: 'cvRisk' },
+        { label: 'Риск диабета (FINDRISK, SCORE2-Diabetes)', next: 'diabetes' },
+        { label: 'Печень и почки (FIB-4, СКФ)', next: 'liverKidney' },
+        { label: 'Наследственность и скрининг', next: 'heredity' },
+        { label: 'Ваши показатели и нормы', next: 'myRefs' },
+        { label: 'Что делать прямо сейчас?', next: 'actions' },
+        { label: 'Редактировать данные', next: 'editData' }
+      ]
+    },
+    myRefs: {
+      text: function() {
+        const map = [
+          { key: 'glucose', name: 'Глюкоза', unit: ' ммоль/л' },
+          { key: 'hba1c', name: 'HbA1c', unit: '%' },
+          { key: 'cholesterol', name: 'Общий холестерин', unit: ' ммоль/л' },
+          { key: 'ldl', name: 'ЛПНП', unit: ' ммоль/л' },
+          { key: 'hdl', name: 'ЛПВП', unit: ' ммоль/л' },
+          { key: 'triglycerides', name: 'Триглицериды', unit: ' ммоль/л' },
+          { key: 'creatinine', name: 'Креатинин', unit: ' мкмоль/л' },
+          { key: 'alt', name: 'АЛТ', unit: ' Ед/л' },
+          { key: 'ast', name: 'АСТ', unit: ' Ед/л' },
+          { key: 'platelets', name: 'Тромбоциты', unit: ' ×10⁹/л' },
+          { key: 'sbp', name: 'Систолическое давление', unit: ' мм рт.ст.' }
+        ];
+        let hasAny = false;
+        let html = 'Ниже — ваши показатели в сравнении с референсными значениями. Пограничные значения — это сигнал «посмотреть внимательнее», высокий уровень — повод для консультации.<br><br>';
+        map.forEach(function(m) {
+          const v = patient[m.key];
+          if (v === null || v === undefined || v === '') return;
+          const r = refs[m.key](v);
+          if (!r) return;
+          hasAny = true;
+          html += '<div class="report-item"><span>' + m.name + '</span><span class="val-block"><span class="risk ' + r.level + '">' + v + m.unit + ' — ' + r.text + '</span><span class="ref-line">' + r.ref + '</span></span></div>' + renderRiskScale(r.pct, '');
+        });
+        if (!hasAny) return 'Вы не ввели лабораторные показатели. Заполните шаг 4 анкеты, чтобы увидеть сравнение с нормами. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button>';
+        html += '<div class="info-hint"><strong>Как читать:</strong> ползунок в зелёной зоне — норма, в оранжевой — пограничное значение, в красной — высокий уровень, требующий внимания врача.</div>';
+        return html;
+      },
+      options: [
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    editData: {
+      text: function() { return 'Вы можете вернуться к анкете и изменить любые данные. После сохранения вернетесь сюда.'; },
+      options: [
+        { label: 'Да, редактировать', next: 'goToForm' },
+        { label: 'Нет, остаться здесь', next: 'start' }
+      ]
+    },
+    goToForm: { action: function() { currentStep = 0; renderForm(currentStep); } },
+    cvRisk: {
+      text: function() {
+        const whtr = calc.whtrRisk();
+        const score2 = calc.score2();
+        let txt = 'По соотношению талии и роста ваш риск: <span class="risk ' + whtr.level + '">' + whtr.text + '</span>.';
+        if (whtr.text === 'Нет данных') {
+          txt += '<div class="missing-data">Для точной оценки нужны данные по росту и талии. <button class="btn small secondary" onclick="app.goToStep(1)">Добавить данные</button></div>';
+        }
+        if (score2) {
+          txt += '<br><br>10-летний риск сердечно-сосудистых событий по SCORE2:';
+          txt += renderRiskScale(score2.pct, score2.text);
+        } else {
+          txt += '<br><br><div class="missing-data">Для расчета SCORE2 нужны данные по давлению и холестерину. <button class="btn small secondary" onclick="app.goToStep(1)">Добавить данные</button></div>';
+        }
+        txt += patient.smoking ? '<br>Курение удваивает риск.' : '<br>Хорошо, что вы не курите.';
+        return txt;
+      },
+      options: [
+        { label: 'Что такое SCORE2?', next: 'score2exp' },
+        { label: 'Как снизить риск?', next: 'cvActions' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    score2exp: {
+      text: function() { return 'SCORE2 — шкала ESC 2021 года. Оценивает 10-летний риск инфаркта, инсульта и других сосудистых событий. Учитывает возраст, пол, курение, давление, холестерин. В этой демо-версии используется упрощенная модель. Для точного расчета — официальные калькуляторы ESC.'; },
+      options: [
+        { label: 'Понятно', next: 'cvRisk' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    cvActions: {
+      text: function() { return 'Главные шаги: 1) Контроль давления (цель &lt;130/80). 2) Снижение ЛПНП (цель зависит от риска). 3) Отказ от курения. 4) 150 минут активности в неделю. 5) Средиземноморская диета. Даже одно снижение веса на 5% дает эффект.'; },
+      options: [
+        { label: 'Спасибо', next: 'start' }
+      ]
+    },
+    diabetes: {
+      text: function() {
+        const findrisk = calc.findriskText();
+        const s2d = calc.score2diabetes();
+        let txt = 'Риск диабета 2 типа по FINDRISK: <span class="risk ' + findrisk.level + '">' + findrisk.text + '</span>.';
+        if (findrisk.pct !== null) txt += renderRiskScale(findrisk.pct, 'Риск развития диабета за 10 лет');
+        if (findrisk.text === 'Недостаточно данных') {
+          txt += '<div class="missing-data">Для расчета нужны рост, вес, талия. <button class="btn small secondary" onclick="app.goToStep(1)">Добавить данные</button></div>';
+        }
+        if (s2d) {
+          txt += '<br><br>По SCORE2-Diabetes: <span class="risk ' + s2d.level + '">' + s2d.text + '</span>.';
+          txt += renderRiskScale(s2d.pct, 'Риск диабета по SCORE2-Diabetes');
+        } else if (patient.hba1c === null) {
+          txt += '<br><br><div class="missing-data">Для SCORE2-Diabetes нужен HbA1c. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button></div>';
+        }
+        if (patient.familyDiabetes) txt += '<br><br>Наследственность утяжеляет прогноз, но образ жизни может компенсировать генетику.';
+        return txt;
+      },
+      options: [
+        { label: 'Что такое SCORE2-Diabetes?', next: 's2dexp' },
+        { label: 'Как снизить риск?', next: 'dmActions' },
+        { label: 'Нужны ли анализы?', next: 'dmTests' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    s2dexp: {
+      text: function() { return 'SCORE2-Diabetes (2023) — новая шкала для оценки риска диабета. Использует возраст, пол, курение, ИМТ, СКФ и HbA1c. Три модели для разных возрастов. В демо — упрощенная версия.'; },
+      options: [
+        { label: 'Понятно', next: 'diabetes' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    dmActions: {
+      text: function() { return 'Три главных шага: 1) 150 минут активности в неделю. 2) Снижение веса на 5-7%. 3) Клетчатка — овощи, цельные злаки. Исследования: эти меры снижают риск диабета на 58%.'; },
+      options: [
+        { label: 'Про питание подробнее?', next: 'diet' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    dmTests: {
+      text: function() { return 'Да, стоит сдать: глюкозу натощак, HbA1c. Если есть сомнения — глюкозотолерантный тест. Это один визит в лабораторию, но дает точный ответ.'; },
+      options: [
+        { label: 'Хорошо', next: 'start' }
+      ]
+    },
+    diet: {
+      text: function() { return 'Правило тарелки: половина — овощи, четверть — белок (рыба, птица, бобовые), четверть — сложные углеводы. Минимум сахара и переработанного мяса. Средиземноморский паттерн — золотой стандарт.'; },
+      options: [
+        { label: 'Спасибо', next: 'start' }
+      ]
+    },
+    liverKidney: {
+      text: function() {
+        const fib = calc.fib4Text();
+        const egfr = calc.egfrText();
+        let txt = 'Печень по FIB-4: <span class="risk ' + fib.level + '">' + fib.text + '</span>.';
+        if (fib.pct !== null) txt += renderRiskScale(fib.pct, 'Риск фиброза печени');
+        if (fib.text === 'Недостаточно данных') {
+          txt += '<div class="missing-data">Нужны АЛТ, АСТ, тромбоциты. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button></div>';
+        }
+        txt += '<br><br>Почки: <span class="risk ' + egfr.level + '">' + egfr.text + '</span>.';
+        // Теперь pct отражает риск, поэтому инверсия (100 - pct) больше не нужна
+        if (egfr.pct !== null) txt += renderRiskScale(egfr.pct, 'Риск снижения функции почек');
+        if (egfr.text === 'Нет данных по креатинину') {
+          txt += '<div class="missing-data">Нужен креатинин. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button></div>';
+        }
+        return txt;
+      },
+      options: [
+        { label: 'Что значит FIB-4?', next: 'fib4exp' },
+        { label: 'А СКФ — это что?', next: 'egfrexp' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    fib4exp: {
+      text: function() { return 'FIB-4 — индекс по возрасту, АСТ, АЛТ и тромбоцитам. Помогает заподозрить фиброз печени, особенно при жировой болезни. Низкие значения успокаивают, высокие — повод для УЗИ.'; },
+      options: [
+        { label: 'Понятно', next: 'liverKidney' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    egfrexp: {
+      text: function() { return 'СКФ — скорость фильтрации почек. Показывает, насколько хорошо почки очищают кровь. Выше 90 — отлично, ниже 60 — нужно наблюдение. Креатинин сам по себе малоинформативен, а СКФ с учетом возраста и пола дает реальную картину.'; },
+      options: [
+        { label: 'Спасибо', next: 'liverKidney' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    heredity: {
+      text: function() {
+        const items = [];
+        if (patient.familyCancer) items.push('Онкология у близких — повод для раннего скрининга');
+        if (patient.familyTEP) items.push('ТЭЛА в семье — маркер тромбофилии, нужно обследование');
+        if (patient.familyHipFracture) items.push('Перелом шейки бедра у родителей — риск остеопороза');
+        if (patient.familyDiabetes) items.push('Диабет в семье — нужно контролировать сахар');
+        if (items.length === 0) return 'Наследственность не отягощена. Это хороший знак, но не отменяет профилактику.';
+        return 'По вашим данным:<br><br>• ' + items.join('<br>• ') + '<br><br>Давайте обсудим, что делать.';
+      },
+      options: function() {
+        const opts = [];
+        if (patient.familyCancer) opts.push({ label: 'Про скрининг онкологии', next: 'cancerScreen' });
+        if (patient.familyTEP) opts.push({ label: 'Про тромбофилию', next: 'thromboScreen' });
+        if (patient.familyHipFracture) opts.push({ label: 'Про остеопороз', next: 'osteoScreen' });
+        opts.push({ label: '← К выбору тем', next: 'start' });
+        return opts;
+      }
+    },
+    cancerScreen: {
+      text: function() { return 'Скрининг спасает жизни. После 45 лет — колоноскопия раз в 10 лет. Для женщин — маммография после 40. Если в семье был рак до 50 лет — нужно начинать раньше и чаще. Обсудим на очном приеме.'; },
+      options: [
+        { label: 'Понятно', next: 'heredity' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    thromboScreen: {
+      text: function() { return 'ТЭЛА у близких может указывать на тромбофилию. Стоит сдать коагулограмму, D-димер, генетические тесты. Особенно важно перед операциями, беременностью, приемом КОК.'; },
+      options: [
+        { label: 'Спасибо', next: 'heredity' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    osteoScreen: {
+      text: function() { return 'Перелом шейки бедра у родителей — маркер остеопороза. Стоит сделать денситометрию (особенно женщинам после менопаузы). Кальций, витамин D, силовые нагрузки — профилактика.'; },
+      options: [
+        { label: 'Хорошо', next: 'heredity' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    actions: {
+      text: function() {
+        const tips = [];
+        const bmi = calc.bmi();
+        if (bmi && bmi > 25) tips.push('Снизить вес на 5-7%');
+        const whtr = calc.whtr();
+        if (whtr && whtr >= 0.5) tips.push('Уменьшить объем талии');
+        if (patient.smoking) tips.push('Бросить курить — самый мощный шаг');
+        if (patient.activity < 1) tips.push('Добавить 150 минут активности в неделю');
+        if (tips.length === 0) tips.push('Поддерживать текущий образ жизни — вы молодец');
+        return 'Вот что я рекомендую в первую очередь:<br><br>• ' + tips.join('<br>• ') + '<br><br>Хотите обсудить что-то конкретное или посмотреть полный отчёт?';
+      },
+      options: [
+        { label: 'Записаться на приём (онлайн или очно)', next: 'appointment' },
+        { label: 'Посмотреть полный отчёт', next: 'report' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    appointment: {
+      text: function() { return 'Отличное решение. Онлайн-консультация — хорошо для оценки рисков, но очный прием нужен для осмотра, назначения обследований и лечения.<br><br>Нажмите кнопку ниже — вы перейдёте на мою страницу записи, где можно выбрать удобный формат:<br>• <strong>онлайн-консультация</strong> — разберём ваши анализы и риски дистанционно;<br>• <strong>очный приём</strong> — осмотр, назначения, коррекция терапии.<br><br>Я помогу подготовиться: расскажу, какие анализы сдать заранее.'; },
+      options: [
+        { label: '📅 Записаться на приём', next: 'taplink', taplink: true },
+        { label: 'Какие анализы сдать?', next: 'testsList' },
+        { label: '← К выбору тем', next: 'start' }
+      ]
+    },
+    taplink: {
+      action: function() {
+        window.open(TAPLINK_URL, '_blank');
+        dialogNodes._afterTaplink = {
+          text: function() { return 'Открылась страница записи. Если вкладка не появилась — браузер заблокировал всплывающее окно, разрешите его для этого файла.<br><br>Ссылка для записи: <a href="' + TAPLINK_URL + '" target="_blank" style="color:var(--taplink);font-weight:600;">' + TAPLINK_URL + '</a>'; },
+          options: [
+            { label: 'Спасибо, всё открылось', next: 'start' },
+            { label: '← К выбору тем', next: 'start' }
+          ]
+        };
+        currentNode = '_afterTaplink';
+        renderDialog();
+      }
+    },
+    testsList: {
+      text: function() { return 'Базовый чек-ап: ОАК, глюкоза, HbA1c, липидограмма, АЛТ, АСТ, креатинин, мочевая кислота, ТТГ. Этого достаточно для оценки основных рисков.'; },
+      options: [
+        { label: 'Спасибо, завершить', next: 'end' }
+      ]
+    },
+    report: { action: function() { renderReport(); } },
+    whatIf: { action: function() { renderWhatIf(); } },
+    labChecklist: { action: function() { renderLabChecklist(); } },
+    end: {
+      text: function() { return 'Спасибо за беседу, ' + patient.name + '! Помните: эта консультация носит информационный характер и не заменяет очного приема. Берегите себя.'; },
+      options: [
+        { label: '📅 Записаться на приём', next: 'taplink', taplink: true },
+        { label: 'Посмотреть полный отчёт', next: 'report' },
+        { label: 'Начать заново', next: 'resetAndStart' }
+      ]
+    },
+    resetAndStart: { action: function() { resetAll(); } }
+  };
+
+  let currentNode = 'start';
+  let currentStep = 0;
+  const content = document.getElementById('content');
+
+  function renderIntro() {
+    content.innerHTML = 
+      '<div class="intro fade-in">' +
+        '<div class="intro-avatar">' +
+          '<svg viewBox="0 0 120 160">' +
+            '<rect x="35" y="85" width="50" height="60" rx="8" fill="#fff" stroke="#2c5282" stroke-width="2"/>' +
+            '<circle cx="60" cy="55" r="28" fill="#fdd" stroke="#2c5282" stroke-width="2"/>' +
+            '<path d="M 32 50 Q 30 30 60 25 Q 90 30 88 50" fill="#555" stroke="#333" stroke-width="1"/>' +
+            '<circle cx="50" cy="55" r="2" fill="#333"/>' +
+            '<circle cx="70" cy="55" r="2" fill="#333"/>' +
+            '<ellipse cx="60" cy="68" rx="6" ry="3" fill="#a33"/>' +
+            '<path d="M 45 90 Q 40 110 60 115 Q 80 110 75 90" fill="none" stroke="#2c5282" stroke-width="2"/>' +
+            '<circle cx="60" cy="118" r="4" fill="#2c5282"/>' +
+            '<rect x="85" y="90" width="12" height="40" rx="6" fill="#fdd" stroke="#2c5282" stroke-width="1.5"/>' +
+          '</svg>' +
+        '</div>' +
+        '<h2>Здравствуйте!</h2>' +
+        '<p>Меня зовут <strong>Андрей Сергеевич Пыстогов</strong>, я врач-терапевт и эндокринолог.</p>' +
+        '<div class="credentials">' +
+          '<h3>Моя специализация:</h3>' +
+          '<ul>' +
+            '<li><strong>Терапия</strong> — диагностика и лечение заболеваний внутренних органов</li>' +
+            '<li><strong>Эндокринология</strong> — работа с диабетом, заболеваниями щитовидной железы, обменом веществ</li>' +
+            '<li><strong>Нутрициология</strong> — научный подход к питанию и коррекции дефицитов</li>' +
+          '</ul>' +
+        '</div>' +
+        '<p>Этот интерактивный помощник поможет вам оценить риски основных заболеваний и понять, на что обратить внимание. Все расчеты основаны на международных клинических рекомендациях.</p>' +
+        '<p><strong>Важно:</strong> эта консультация носит информационный характер и не заменяет очного приема врача.</p>' +
+        '<div class="actions" style="justify-content: center;">' +
+          '<button class="btn" id="startBtn">Начать оценку рисков</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('startBtn').addEventListener('click', function() {
+      playClick();
+      currentStep = 0;
+      renderForm(currentStep);
+    });
+  }
+
+  function renderForm(step) {
+    const steps = [
+      {
+        title: 'Шаг 1 из 4: Основное',
+        html: 
+          '<div class="field"><label>Как к вам обращаться?</label>' +
+            '<input id="name" value="' + (patient.name || '') + '" placeholder="Например: Иван"></div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Пол</label>' +
+              '<select id="sex">' +
+                '<option value="m"' + (patient.sex==='m'?' selected':'') + '>Мужской</option>' +
+                '<option value="f"' + (patient.sex==='f'?' selected':'') + '>Женский</option>' +
+              '</select></div>' +
+            '<div class="field"><label>Возраст</label>' +
+              '<input type="number" id="age" value="' + (patient.age||'') + '" min="18" max="100" placeholder="45"></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Курите?</label>' +
+              '<select id="smoking">' +
+                '<option value="0"' + (!patient.smoking?' selected':'') + '>Нет</option>' +
+                '<option value="1"' + (patient.smoking?' selected':'') + '>Да</option>' +
+              '</select></div>' +
+            '<div class="field"><label>Алкоголь (порций в неделю)</label>' +
+              '<input type="number" id="alcohol" value="' + (patient.alcohol||0) + '" min="0" placeholder="Например: 7">' +
+              '<div class="hint">1 порция = 10 г чистого спирта ≈ 100 мл вина / 30 мл крепкого / 250 мл пива</div></div>' +
+          '</div>'
+      },
+      {
+        title: 'Шаг 2 из 4: Тело и образ жизни',
+        html: 
+          '<div class="row">' +
+            '<div class="field"><label>Рост, см</label>' +
+              '<input type="number" id="height" value="' + (patient.height||'') + '" placeholder="175"></div>' +
+            '<div class="field"><label>Вес, кг</label>' +
+              '<input type="number" id="weight" value="' + (patient.weight||'') + '" placeholder="80"></div>' +
+            '<div class="field"><label>Талия, см</label>' +
+              '<input type="number" id="waist" value="' + (patient.waist||'') + '" placeholder="90">' +
+              '<div class="hint">Мерить на уровне пупка, утром натощак</div></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Систолическое давление, мм рт.ст.</label>' +
+              '<input type="number" id="sbp" value="' + (patient.sbp||'') + '" placeholder="120">' +
+              '<div class="hint">Среднее из нескольких измерений</div></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Активность (часов в неделю)</label>' +
+              '<input type="number" id="activity" value="' + (patient.activity||0) + '" step="0.5" placeholder="3">' +
+              '<div class="hint">Ходьба, спорт, физический труд</div></div>' +
+            '<div class="field"><label>Овощей/фруктов (порций в день)</label>' +
+              '<input type="number" id="vegetables" value="' + (patient.vegetables||0) + '" placeholder="Например: 4">' +
+              '<div class="hint">1 порция ≈ 80 г — средний фрукт, горсть ягод, 2 ст.л. салата</div></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Была ли гипертония?</label>' +
+              '<select id="hypertension">' +
+                '<option value="0"' + (!patient.hypertension?' selected':'') + '>Нет</option>' +
+                '<option value="1"' + (patient.hypertension?' selected':'') + '>Да</option>' +
+              '</select></div>' +
+            '<div class="field"><label>Повышенный сахар ранее?</label>' +
+              '<select id="glucoseHistory">' +
+                '<option value="0"' + (!patient.glucoseHistory?' selected':'') + '>Нет</option>' +
+                '<option value="1"' + (patient.glucoseHistory?' selected':'') + '>Да</option>' +
+              '</select></div>' +
+          '</div>'
+      },
+      {
+        title: 'Шаг 3 из 4: Наследственность',
+        html: 
+          '<div class="field"><label>Диабет у родителей/братьев/сестер?</label>' +
+            '<select id="familyDiabetes">' +
+              '<option value="0"' + (!patient.familyDiabetes?' selected':'') + '>Нет</option>' +
+              '<option value="1"' + (patient.familyDiabetes?' selected':'') + '>Да</option>' +
+            '</select></div>' +
+          '<div class="field"><label>Онкология у близких родственников (особенно до 50 лет)?</label>' +
+            '<select id="familyCancer">' +
+              '<option value="0"' + (!patient.familyCancer?' selected':'') + '>Нет</option>' +
+              '<option value="1"' + (patient.familyCancer?' selected':'') + '>Да</option>' +
+            '</select></div>' +
+          '<div class="field"><label>ТЭЛА / тромбозы у близких?</label>' +
+            '<select id="familyTEP">' +
+              '<option value="0"' + (!patient.familyTEP?' selected':'') + '>Нет</option>' +
+              '<option value="1"' + (patient.familyTEP?' selected':'') + '>Да</option>' +
+            '</select></div>' +
+          '<div class="field"><label>Перелом шейки бедра у родителей?</label>' +
+            '<select id="familyHipFracture">' +
+              '<option value="0"' + (!patient.familyHipFracture?' selected':'') + '>Нет</option>' +
+              '<option value="1"' + (patient.familyHipFracture?' selected':'') + '>Да</option>' +
+            '</select></div>'
+      },
+      {
+        title: 'Шаг 4 из 4: Анализы (необязательно)',
+        html: 
+          '<p style="color:var(--muted);font-size:14px">Если не знаете — оставьте пустым. Калькуляторы сработают по доступным данным.</p>' +
+          '<div class="row">' +
+            '<div class="field"><label>Глюкоза, ммоль/л</label>' +
+              '<input type="number" step="0.1" id="glucose" value="' + (patient.glucose||'') + '" placeholder="5.2">' +
+              '<div class="hint">норма натощак: 4.1–5.6</div></div>' +
+            '<div class="field"><label>HbA1c, %</label>' +
+              '<input type="number" step="0.1" id="hba1c" value="' + (patient.hba1c||'') + '" placeholder="5.5">' +
+              '<div class="hint">норма: &lt;5.7%</div></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Общий холестерин, ммоль/л</label>' +
+              '<input type="number" step="0.1" id="cholesterol" value="' + (patient.cholesterol||'') + '" placeholder="5.0">' +
+              '<div class="hint">норма: &lt;5.0</div></div>' +
+            '<div class="field"><label>ЛПНП, ммоль/л</label>' +
+              '<input type="number" step="0.1" id="ldl" value="' + (patient.ldl||'') + '" placeholder="2.8">' +
+              '<div class="hint">норма: &lt;3.0</div></div>' +
+            '<div class="field"><label>ЛПВП, ммоль/л</label>' +
+              '<input type="number" step="0.1" id="hdl" value="' + (patient.hdl||'') + '" placeholder="1.3">' +
+              '<div class="hint">чем выше — тем лучше</div></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>Триглицериды, ммоль/л</label>' +
+              '<input type="number" step="0.1" id="triglycerides" value="' + (patient.triglycerides||'') + '" placeholder="1.5">' +
+              '<div class="hint">норма: &lt;1.7</div></div>' +
+            '<div class="field"><label>Креатинин, мкмоль/л</label>' +
+              '<input type="number" id="creatinine" value="' + (patient.creatinine||'') + '" placeholder="80">' +
+              '<div class="hint">м: 62–106, ж: 44–80</div></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="field"><label>АЛТ, Ед/л</label>' +
+              '<input type="number" step="0.1" id="alt" value="' + (patient.alt||'') + '" placeholder="25">' +
+              '<div class="hint">м: &lt;40, ж: &lt;32</div></div>' +
+            '<div class="field"><label>АСТ, Ед/л</label>' +
+              '<input type="number" step="0.1" id="ast" value="' + (patient.ast||'') + '" placeholder="22">' +
+              '<div class="hint">м: &lt;40, ж: &lt;32</div></div>' +
+            '<div class="field"><label>Тромбоциты, ×10⁹/л</label>' +
+              '<input type="number" id="platelets" value="' + (patient.platelets||'') + '" placeholder="250">' +
+              '<div class="hint">норма: 180–320</div></div>' +
+          '</div>'
+      }
+    ];
+    const s = steps[step];
+    content.innerHTML = 
+      '<div class="fade-in">' +
+        '<div class="progress"><div class="progress-bar" style="width:' + ((step+1)*25) + '%"></div></div>' +
+        '<h2 style="margin-top:0">' + s.title + '</h2>' +
+        s.html +
+        '<div class="actions">' +
+          (step > 0 ? '<button class="btn secondary" id="prevBtn">Назад</button>' : '') +
+          '<button class="btn" id="nextBtn">' + (step < 3 ? 'Далее' : 'Сохранить и продолжить') + '</button>' +
+        '</div>' +
+      '</div>';
+    if (step > 0) {
+      document.getElementById('prevBtn').addEventListener('click', function() {
+        playClick();
+        saveStep(currentStep);
+        currentStep = step - 1;
+        renderForm(currentStep);
+      });
+    }
+    document.getElementById('nextBtn').addEventListener('click', function() {
+      playClick();
+      saveStep(currentStep);
+      if (step < 3) {
+        currentStep = step + 1;
+        renderForm(currentStep);
+      } else {
+        playSuccess();
+        startDialog();
+      }
+    });
+  }
+
+  function saveStep(step) {
+    const v = function(id) { const el = document.getElementById(id); return el ? el.value : ''; };
+    if (step === 0) {
+      patient.name = v('name').trim();
+      patient.sex = v('sex');
+      patient.age = parseInt(v('age')) || 0;
+      patient.smoking = v('smoking') === '1';
+      patient.alcohol = parseFloat(v('alcohol')) || 0;
+    } else if (step === 1) {
+      patient.height = parseFloat(v('height')) || 0;
+      patient.weight = parseFloat(v('weight')) || 0;
+      patient.waist = parseFloat(v('waist')) || 0;
+      patient.sbp = parseFloat(v('sbp')) || 0;
+      patient.activity = parseFloat(v('activity')) || 0;
+      patient.vegetables = parseFloat(v('vegetables')) || 0;
+      patient.hypertension = v('hypertension') === '1';
+      patient.glucoseHistory = v('glucoseHistory') === '1';
+    } else if (step === 2) {
+      patient.familyDiabetes = v('familyDiabetes') === '1';
+      patient.familyCancer = v('familyCancer') === '1';
+      patient.familyTEP = v('familyTEP') === '1';
+      patient.familyHipFracture = v('familyHipFracture') === '1';
+    } else if (step === 3) {
+      ['glucose','hba1c','cholesterol','ldl','hdl','triglycerides','creatinine','alt','ast','platelets'].forEach(function(k) {
+        const val = v(k);
+        patient[k] = val ? parseFloat(val) : null;
+      });
+    }
+    savePatient();
+  }
+
+  function renderDialog() {
+    const node = dialogNodes[currentNode];
+    if (node.action) { node.action(); return; }
+    const text = typeof node.text === 'function' ? node.text() : node.text;
+    const options = typeof node.options === 'function' ? node.options() : node.options;
+    let optionsHtml = '<div class="options stagger">';
+    options.forEach(function(o) {
+      const cls = o.taplink ? 'option taplink-opt' : 'option';
+      optionsHtml += '<button class="' + cls + '" data-next="' + o.next + '">' + o.label + '</button>';
+    });
+    optionsHtml += '</div>';
+    content.innerHTML = 
+      '<div class="dialog fade-in">' +
+        '<div class="avatar">' +
+          '<svg viewBox="0 0 120 160">' +
+            '<rect x="35" y="85" width="50" height="60" rx="8" fill="#fff" stroke="#2c5282" stroke-width="2"/>' +
+            '<circle cx="60" cy="55" r="28" fill="#fdd" stroke="#2c5282" stroke-width="2"/>' +
+            '<path d="M 32 50 Q 30 30 60 25 Q 90 30 88 50" fill="#555" stroke="#333" stroke-width="1"/>' +
+            '<circle cx="50" cy="55" r="2" fill="#333"/>' +
+            '<circle cx="70" cy="55" r="2" fill="#333"/>' +
+            '<ellipse class="mouth" id="mouth" cx="60" cy="68" rx="6" ry="3" fill="#a33"/>' +
+            '<path d="M 45 90 Q 40 110 60 115 Q 80 110 75 90" fill="none" stroke="#2c5282" stroke-width="2"/>' +
+            '<circle cx="60" cy="118" r="4" fill="#2c5282"/>' +
+            '<g class="arm"><rect x="85" y="90" width="12" height="40" rx="6" fill="#fdd" stroke="#2c5282" stroke-width="1.5"/></g>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="bubble">' +
+          '<div>' + text + '</div>' +
+          optionsHtml +
+        '</div>' +
+      '</div>';
+    const optionBtns = content.querySelectorAll('.option[data-next]');
+    optionBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        playClick();
+        goNode(btn.getAttribute('data-next'));
+      });
+    });
+    const mouth = document.getElementById('mouth');
+    if (mouth) {
+      mouth.classList.add('active');
+      setTimeout(function() { mouth.classList.remove('active'); }, 1500);
+    }
+  }
+
+  function goNode(n) { currentNode = n; renderDialog(); }
+  function startDialog() { currentNode = 'start'; renderDialog(); }
+
+  function renderReport() {
+    const bioAge = calc.biologicalAge();
+    const bmi = calc.bmi();
+    const whtr = calc.whtr();
+    const score2 = calc.score2();
+    const s2d = calc.score2diabetes();
+    const findrisk = calc.findriskText();
+    const fib4 = calc.fib4Text();
+    const egfr = calc.egfrText();
+
+    const bmiInt = refs.bmi(bmi);
+    const whtrInt = refs.whtr(whtr);
+
+    const tips = [];
+    if (patient.smoking) tips.push({t: 'Бросить курить', d: 'Самый мощный шаг для здоровья. Через 1 год риск ССЗ снижается вдвое.'});
+    if (bmi && bmi > 25) tips.push({t: 'Снизить вес на 5-7%', d: 'Уже небольшое снижение даёт ощутимый эффект для сердца и обмена веществ.'});
+    if (whtr && whtr >= 0.5) tips.push({t: 'Уменьшить объем талии', d: 'Висцеральный жир опаснее общего веса. Цель — WHtR < 0.5.'});
+    if (patient.activity < 1) tips.push({t: 'Добавить 150 минут активности в неделю', d: 'Даже быстрая ходьба 30 минут 5 дней в неделю работает.'});
+    if (patient.vegetables < 3) tips.push({t: 'Увеличить долю овощей', d: 'Минимум 400 г овощей и фруктов в день (≈5 порций по 80 г).'});
+    if (patient.sbp >= 140) tips.push({t: 'Контролировать давление', d: 'Цель — ниже 130/80. Обсудите тактику с врачом.'});
+    if (patient.cholesterol && patient.cholesterol >= 6) tips.push({t: 'Снизить холестерин', d: 'Особенно ЛПНП. Средиземноморская диета + активность.'});
+    if (tips.length === 0) tips.push({t: 'Поддерживать текущий образ жизни', d: 'Вы молодец! Продолжайте в том же духе.'});
+
+    const refItems = [
+      { key: 'sbp', name: 'Систолическое давление', unit: ' мм рт.ст.', val: patient.sbp },
+      { key: 'glucose', name: 'Глюкоза', unit: ' ммоль/л', val: patient.glucose },
+      { key: 'hba1c', name: 'HbA1c', unit: '%', val: patient.hba1c },
+      { key: 'cholesterol', name: 'Общий холестерин', unit: ' ммоль/л', val: patient.cholesterol },
+      { key: 'ldl', name: 'ЛПНП', unit: ' ммоль/л', val: patient.ldl },
+      { key: 'hdl', name: 'ЛПВП', unit: ' ммоль/л', val: patient.hdl },
+      { key: 'triglycerides', name: 'Триглицериды', unit: ' ммоль/л', val: patient.triglycerides },
+      { key: 'creatinine', name: 'Креатинин', unit: ' мкмоль/л', val: patient.creatinine },
+      { key: 'alt', name: 'АЛТ', unit: ' Ед/л', val: patient.alt },
+      { key: 'ast', name: 'АСТ', unit: ' Ед/л', val: patient.ast },
+      { key: 'platelets', name: 'Тромбоциты', unit: ' ×10⁹/л', val: patient.platelets }
+    ];
+    let refHtml = '';
+    let hasAnyRef = false;
+    refItems.forEach(function(it) {
+      if (it.val === null || it.val === undefined || it.val === '') return;
+      const r = refs[it.key](it.val);
+      if (!r) return;
+      hasAnyRef = true;
+      refHtml += '<div class="report-item"><span>' + it.name + '</span><span class="val-block"><span class="risk ' + r.level + '">' + it.val + it.unit + ' — ' + r.text + '</span><span class="ref-line">' + r.ref + '</span></span></div>' + renderRiskScale(r.pct, '');
+    });
+    if (!hasAnyRef) refHtml = '<div style="color:var(--muted);font-size:14px">Лабораторные показатели не введены. Заполните шаг 4 анкеты или сдайте анализы — и здесь появится сравнение с нормами.</div>';
+
+    const tests = [
+      {n: 'Глюкоза натощак', d: patient.glucose !== null, r: 'Скрининг диабета'},
+      {n: 'HbA1c', d: patient.hba1c !== null, r: 'Средний сахар за 3 месяца'},
+      {n: 'Липидограмма (общий ХС, ЛПНП, ЛПВП, ТГ)', d: patient.cholesterol !== null, r: 'Оценка сердечно-сосудистого риска'},
+      {n: 'Креатинин + расчёт СКФ', d: patient.creatinine !== null, r: 'Функция почек'},
+      {n: 'АЛТ, АСТ', d: patient.alt !== null && patient.ast !== null, r: 'Функция печени'},
+      {n: 'Тромбоциты', d: patient.platelets !== null, r: 'Для расчёта FIB-4'},
+      {n: 'ТТГ', d: false, r: 'Скрининг щитовидной железы'},
+      {n: 'Мочевая кислота', d: false, r: 'Обмен веществ, риск подагры'},
+      {n: 'Витамин D (25-OH)', d: false, r: 'Частый дефицит в России'},
+      {n: 'Ферритин', d: false, r: 'Запасы железа'},
+      {n: 'ОАК', d: false, r: 'Базовый скрининг'}
+    ];
+
+    content.innerHTML = 
+      '<div class="fade-in">' +
+        '<h2 style="margin-top:0;color:var(--btn)">Персональный отчёт: ' + patient.name + '</h2>' +
+        '<p style="color:var(--muted);font-size:13px">Дата: ' + new Date().toLocaleDateString('ru-RU') + '</p>' +
+        
+        '<div class="bio-age-display">' +
+          '<div class="bio-age-label">Ваш биологический возраст</div>' +
+          '<div class="bio-age-number">' + (bioAge || '—') + '</div>' +
+          '<div class="bio-age-label">лет (паспортный: ' + patient.age + ')</div>' +
+          (bioAge ? '<div class="bio-age-diff">' + (bioAge > patient.age ? '+' : '') + (bioAge - patient.age) + ' лет к паспортному возрасту</div>' : '') +
+        '</div>' +
+
+        '<div class="good-news">' +
+          '<strong>Хорошая новость:</strong> биологический возраст — это не приговор, а управляемый показатель. Он рассчитан на основе ваших данных. Изменив эти факторы, вы можете снизить его на 3–7 лет за полгода-год. Отказ от курения снижает его на 4 года, а нормализация веса и давления — ещё на 3–5 лет.' +
+        '</div>' +
+
+        '<div class="report-section">' +
+          '<h3>Оценка рисков</h3>' +
+          (score2 ? '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span class="risk ' + score2.level + '">' + score2.text + '</span></div>' + renderRiskScale(score2.pct, '') : '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span style="color:var(--muted)">нет данных</span></div>') +
+          (findrisk.pct !== null ? '<div class="report-item"><span>Диабет 2 типа (FINDRISK)</span><span class="risk ' + findrisk.level + '">' + findrisk.text + '</span></div>' + renderRiskScale(findrisk.pct, '') : '<div class="report-item"><span>Диабет 2 типа (FINDRISK)</span><span style="color:var(--muted)">нет данных</span></div>') +
+          (s2d ? '<div class="report-item"><span>Диабет (SCORE2-Diabetes)</span><span class="risk ' + s2d.level + '">' + s2d.text + '</span></div>' + renderRiskScale(s2d.pct, '') : '') +
+          (fib4.pct !== null ? '<div class="report-item"><span>Фиброз печени (FIB-4)</span><span class="risk ' + fib4.level + '">' + fib4.text + '</span></div>' + renderRiskScale(fib4.pct, '') : '') +
+          (egfr.pct !== null ? '<div class="report-item"><span>Функция почек (СКФ)</span><span class="risk ' + egfr.level + '">' + egfr.text + '</span></div>' + renderRiskScale(egfr.pct, '') : '') +
+          (bmiInt ? '<div class="report-item"><span>ИМТ</span><span class="val-block"><span class="risk ' + bmiInt.level + '">' + bmi.toFixed(1) + ' — ' + bmiInt.text + '</span><span class="ref-line">' + bmiInt.ref + '</span></span></div>' + renderRiskScale(bmiInt.pct, '') : '') +
+          (whtrInt ? '<div class="report-item"><span>Талия/рост (WHtR)</span><span class="val-block"><span class="risk ' + whtrInt.level + '">' + whtr.toFixed(2) + ' — ' + whtrInt.text + '</span><span class="ref-line">' + whtrInt.ref + '</span></span></div>' + renderRiskScale(whtrInt.pct, '') : '') +
+        '</div>' +
+
+        '<div class="report-section">' +
+          '<h3>Ваши показатели и нормы</h3>' +
+          '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Зелёный — норма, оранжевый — пограничное значение, красный — высокий уровень</div>' +
+          refHtml +
+        '</div>' +
+
+        '<div class="report-section">' +
+          '<h3>Топ-рекомендации</h3>' +
+          tips.slice(0, 3).map(function(t, i) {
+            return '<div class="report-item"><span><strong>' + (i+1) + '. ' + t.t + '</strong><br><span style="font-size:13px;color:var(--muted)">' + t.d + '</span></span></div>';
+          }).join('') +
+        '</div>' +
+
+        '<div class="report-section">' +
+          '<h3>Анализы</h3>' +
+          '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">✓ — введены в анкете, нужно дополнить остальное</div>' +
+          tests.map(function(t) {
+            return '<div class="report-item"><span>' + t.n + '</span><span class="test-status' + (t.d ? ' done' : '') + '">' + (t.d ? '✓ введён' : 'рекомендуется') + '</span></div>';
+          }).join('') +
+        '</div>' +
+
+        '<div class="report-section" style="background:var(--risk-med);border-left:4px solid var(--risk-med-t)">' +
+          '<strong>Важно:</strong> этот отчёт носит информационный характер и не заменяет очного приема врача. Покажите его своему доктору для обсуждения тактики.' +
+        '</div>' +
+
+        '<div class="actions stagger">' +
+          '<a class="btn taplink" href="' + TAPLINK_URL + '" target="_blank">📅 Записаться на приём</a>' +
+          '<button class="btn accent" id="printBtn">🖨 Распечатать / PDF</button>' +
+          '<button class="btn" id="whatIfBtn">Что если... (сценарии)</button>' +
+          '<button class="btn secondary" id="labBtn">Чек-лист для лаборатории</button>' +
+          '<button class="btn secondary" id="backBtn">← К диалогу</button>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('printBtn').addEventListener('click', function() { playClick(); window.print(); });
+    document.getElementById('whatIfBtn').addEventListener('click', function() { playClick(); renderWhatIf(); });
+    document.getElementById('labBtn').addEventListener('click', function() { playClick(); renderLabChecklist(); });
+    document.getElementById('backBtn').addEventListener('click', function() { playClick(); currentNode = 'start'; renderDialog(); });
+  }
+
+  function renderWhatIf() {
+    const wi = {
+      weight: patient.weight || 80,
+      sbp: patient.sbp || 120,
+      activity: patient.activity || 0,
+      smoking: patient.smoking,
+      waist: patient.waist || 90
+    };
+
+    function recalc() {
+      const origW = patient.weight, origSbp = patient.sbp, origA = patient.activity, origSm = patient.smoking, origWaist = patient.waist;
+      patient.weight = wi.weight; patient.sbp = wi.sbp; patient.activity = wi.activity; patient.smoking = wi.smoking; patient.waist = wi.waist;
+      
+      const s2 = calc.score2();
+      const fr = calc.findriskText();
+      const s2d = calc.score2diabetes();
+      const bio = calc.biologicalAge();
+      const bmi = calc.bmi();
+      const whtr = calc.whtr();
+      
+      patient.weight = origW; patient.sbp = origSbp; patient.activity = origA; patient.smoking = origSm; patient.waist = origWaist;
+
+      document.getElementById('wi-s2').innerHTML = s2 ? '<span class="risk ' + s2.level + '">' + s2.text + '</span>' : '<span style="color:var(--muted)">нет данных</span>';
+      document.getElementById('wi-fr').innerHTML = fr.pct !== null ? '<span class="risk ' + fr.level + '">' + fr.text + '</span>' : '<span style="color:var(--muted)">нет данных</span>';
+      document.getElementById('wi-s2d').innerHTML = s2d ? '<span class="risk ' + s2d.level + '">' + s2d.text + '</span>' : '<span style="color:var(--muted)">нет данных</span>';
+      document.getElementById('wi-bio').textContent = bio ? bio + ' лет' : '—';
+      document.getElementById('wi-bmi').textContent = bmi ? bmi.toFixed(1) : '—';
+      document.getElementById('wi-whtr').textContent = whtr ? whtr.toFixed(2) : '—';
+      document.getElementById('wi-act-val').textContent = wi.activity + ' ч/нед';
+      document.getElementById('wi-weight-val').textContent = wi.weight + ' кг';
+      document.getElementById('wi-sbp-val').textContent = wi.sbp + ' мм рт.ст.';
+      document.getElementById('wi-waist-val').textContent = wi.waist + ' см';
+    }
+
+    content.innerHTML = 
+      '<div class="fade-in">' +
+        '<h2 style="margin-top:0;color:var(--btn)">Сценарий «Что если...»</h2>' +
+        '<p style="color:var(--muted)">Изменяйте параметры — риски пересчитываются мгновенно. Изменения не сохраняются, пока вы не нажмёте «Применить».</p>' +
+        
+        '<div class="report-section">' +
+          '<h3>Ваши параметры</h3>' +
+          '<div class="whatif-slider"><label>Вес <span class="value" id="wi-weight-val">' + wi.weight + ' кг</span></label><input type="range" id="wi-weight" min="50" max="150" value="' + wi.weight + '"></div>' +
+          '<div class="whatif-slider"><label>Талия <span class="value" id="wi-waist-val">' + wi.waist + ' см</span></label><input type="range" id="wi-waist" min="60" max="140" value="' + wi.waist + '"></div>' +
+          '<div class="whatif-slider"><label>Давление (систолическое) <span class="value" id="wi-sbp-val">' + wi.sbp + ' мм рт.ст.</span></label><input type="range" id="wi-sbp" min="90" max="200" value="' + wi.sbp + '"></div>' +
+          '<div class="whatif-slider"><label>Активность <span class="value" id="wi-act-val">' + wi.activity + ' ч/нед</span></label><input type="range" id="wi-activity" min="0" max="10" step="0.5" value="' + wi.activity + '"></div>' +
+          '<label class="whatif-toggle"><input type="checkbox" id="wi-smoking"' + (wi.smoking ? ' checked' : '') + '> Курю</label>' +
+        '</div>' +
+
+        '<div class="report-section">' +
+          '<h3>Как меняются риски</h3>' +
+          '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span id="wi-s2">—</span></div>' +
+          '<div class="report-item"><span>Диабет (FINDRISK)</span><span id="wi-fr">—</span></div>' +
+          '<div class="report-item"><span>Диабет (SCORE2-Diabetes)</span><span id="wi-s2d">—</span></div>' +
+          '<div class="report-item"><span>ИМТ</span><span id="wi-bmi">—</span></div>' +
+          '<div class="report-item"><span>Талия/рост</span><span id="wi-whtr">—</span></div>' +
+          '<div class="report-item"><span>Биологический возраст</span><span id="wi-bio">—</span></div>' +
+        '</div>' +
+
+        '<div class="good-news">' +
+          '<strong>Хорошая новость:</strong> вы видите, как риски меняются прямо сейчас. Это значит, что они управляемы. Даже небольшие изменения (минус 3-5 кг, плюс 1 час ходьбы в неделю) дают измеримый эффект.' +
+        '</div>' +
+
+        '<div class="actions stagger">' +
+          '<button class="btn accent" id="wi-apply">Применить изменения</button>' +
+          '<button class="btn secondary" id="wi-reset">Сбросить к исходным</button>' +
+          '<button class="btn secondary" id="wi-back">← К отчёту</button>' +
+        '</div>' +
+      '</div>';
+
+    ['weight','waist','sbp','activity'].forEach(function(k) {
+      document.getElementById('wi-' + k).addEventListener('input', function(e) {
+        wi[k] = parseFloat(e.target.value);
+        recalc();
+      });
+    });
+    document.getElementById('wi-smoking').addEventListener('change', function(e) {
+      wi.smoking = e.target.checked;
+      recalc();
+    });
+
+    document.getElementById('wi-apply').addEventListener('click', function() {
+      playSuccess();
+      patient.weight = wi.weight; patient.waist = wi.waist; patient.sbp = wi.sbp; patient.activity = wi.activity; patient.smoking = wi.smoking;
+      savePatient();
+      renderReport();
+    });
+    document.getElementById('wi-reset').addEventListener('click', function() {
+      playClick();
+      wi.weight = patient.weight || 80; wi.waist = patient.waist || 90; wi.sbp = patient.sbp || 120; wi.activity = patient.activity || 0; wi.smoking = patient.smoking;
+      document.getElementById('wi-weight').value = wi.weight;
+      document.getElementById('wi-waist').value = wi.waist;
+      document.getElementById('wi-sbp').value = wi.sbp;
+      document.getElementById('wi-activity').value = wi.activity;
+      document.getElementById('wi-smoking').checked = wi.smoking;
+      recalc();
+    });
+    document.getElementById('wi-back').addEventListener('click', function() { playClick(); renderReport(); });
+
+    recalc();
+  }
+
+  function renderLabChecklist() {
+    const tests = [
+      {n: 'Общий анализ крови (ОАК)', r: 'Базовый скрининг', d: false},
+      {n: 'Глюкоза натощак', r: 'Скрининг диабета', d: patient.glucose !== null},
+      {n: 'HbA1c (гликированный гемоглобин)', r: 'Средний сахар за 3 месяца', d: patient.hba1c !== null},
+      {n: 'Глюкозотолерантный тест', r: 'При пограничных значениях глюкозы', d: false},
+      {n: 'Общий холестерин', r: 'Оценка сердечно-сосудистого риска', d: patient.cholesterol !== null},
+      {n: 'ЛПНП', r: '«Плохой» холестерин — главный враг сосудов', d: patient.ldl !== null},
+      {n: 'ЛПВП', r: '«Хороший» холестерин', d: patient.hdl !== null},
+      {n: 'Триглицериды', r: 'Маркер метаболического риска', d: patient.triglycerides !== null},
+      {n: 'Креатинин + расчёт СКФ', r: 'Функция почек', d: patient.creatinine !== null},
+      {n: 'Мочевина', r: 'Дополнительно к креатинину', d: false},
+      {n: 'Мочевая кислота', r: 'Обмен веществ, риск подагры', d: false},
+      {n: 'АЛТ', r: 'Функция печени', d: patient.alt !== null},
+      {n: 'АСТ', r: 'Функция печени, для FIB-4', d: patient.ast !== null},
+      {n: 'Тромбоциты', r: 'Для расчёта FIB-4', d: patient.platelets !== null},
+      {n: 'Общий белок', r: 'Общее состояние, питание', d: false},
+      {n: 'ТТГ', r: 'Скрининг щитовидной железы', d: false},
+      {n: 'Витамин D (25-OH)', r: 'Частый дефицит в России', d: false},
+      {n: 'Ферритин', r: 'Запасы железа', d: false},
+      {n: 'Коагулограмма', r: 'При семейной ТЭЛА', d: false},
+      {n: 'Денситометрия', r: 'При семейных переломах шейки бедра', d: false}
+    ];
+
+    const savedChecks = storage.get('labChecks');
+    let checks = {};
+    if (savedChecks) { try { checks = JSON.parse(savedChecks); } catch(e) {} }
+
+    content.innerHTML = 
+      '<div class="fade-in">' +
+        '<h2 style="margin-top:0;color:var(--btn)">Чек-лист для лаборатории</h2>' +
+        '<p style="color:var(--muted)">Отметьте, что уже сдавали. Список можно скопировать и показать в лаборатории.</p>' +
+        '<div id="checklist">' +
+          tests.map(function(t) {
+            const checked = checks[t.n] ? ' checked' : '';
+            const doneClass = checks[t.n] ? ' done' : '';
+            return '<div class="checklist-item' + doneClass + '">' +
+              '<input type="checkbox" data-test="' + t.n + '"' + checked + '>' +
+              '<div style="flex:1"><div class="test-name">' + t.n + '</div><div class="test-reason">' + t.r + '</div></div>' +
+              '<span class="test-status' + (t.d ? ' done' : '') + '">' + (t.d ? 'введено' : 'рекомендуется') + '</span>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+        '<div class="actions stagger">' +
+          '<button class="btn accent" id="copyBtn">📋 Скопировать список</button>' +
+          '<button class="btn secondary" id="labBack">← К отчёту</button>' +
+        '</div>' +
+      '</div>';
+
+    const checkboxes = content.querySelectorAll('#checklist input[type="checkbox"]');
+    checkboxes.forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        playClick();
+        checks[cb.getAttribute('data-test')] = cb.checked;
+        cb.parentElement.classList.toggle('done', cb.checked);
+        try { storage.set('labChecks', JSON.stringify(checks)); } catch(e) {}
+      });
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', function() {
+      playSuccess();
+      const list = tests.map(function(t, i) {
+        const mark = checks[t.n] ? '✓' : '○';
+        return (i+1) + '. ' + mark + ' ' + t.n + ' — ' + t.r;
+      }).join('\n');
+      const full = 'Чек-лист анализов для ' + patient.name + ':\n\n' + list + '\n\nДата: ' + new Date().toLocaleDateString('ru-RU');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(full).then(function() {
+          document.getElementById('copyBtn').textContent = '✓ Скопировано!';
+          setTimeout(function() { document.getElementById('copyBtn').textContent = '📋 Скопировать список'; }, 2000);
+        });
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = full;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        document.getElementById('copyBtn').textContent = '✓ Скопировано!';
+      }
+    });
+    document.getElementById('labBack').addEventListener('click', function() { playClick(); renderReport(); });
+  }
+
+  function resetAll() {
+    if (confirm('Вы уверены? Все данные будут удалены.')) {
+      storage.remove('patientData');
+      storage.remove('labChecks');
+      location.reload();
+    }
+  }
+
+  window.app = {
+    goToStep: function(step) { playClick(); currentStep = step; renderForm(currentStep); }
+  };
+
+  document.getElementById('resetBtn').addEventListener('click', function() { playClick(); resetAll(); });
+
+  if (patient.name && patient.name.trim().length > 0) {
+    startDialog();
+  } else {
+    renderIntro();
+  }
+
+})();
+</script>
+</body>
+</html>
