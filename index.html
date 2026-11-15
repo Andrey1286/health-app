@@ -183,6 +183,18 @@ color: var(--muted);
 margin-top: 4px;
 font-style: italic;
 }
+.field.error input, .field.error select { border-color: #e53e3e; border-width: 2px; }
+.error-message {
+background: var(--risk-high);
+border-left: 4px solid #e53e3e;
+padding: 14px;
+border-radius: 0 8px 8px 0;
+margin: 16px 0 0 0;
+font-size: 15px;
+color: var(--risk-high-t);
+line-height: 1.5;
+font-weight: 500;
+}
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row .field { flex: 1; min-width: 140px; }
 .btn {
@@ -332,6 +344,16 @@ font-size: 15px;
 color: var(--therapy-text);
 line-height: 1.5;
 font-weight: 500;
+}
+.diabetes-info {
+background: var(--therapy-bg);
+border-left: 4px solid var(--therapy-border);
+padding: 14px;
+border-radius: 0 8px 8px 0;
+margin: 12px 0;
+font-size: 15px;
+color: var(--therapy-text);
+line-height: 1.6;
 }
 .risk-scale {
 margin: 10px 0 14px 0;
@@ -694,6 +716,9 @@ body { background: #fff; padding: 0; }
 <script>
 (function() {
 'use strict';
+const TAPLINK_ONLINE = 'https://pystogovas.taplink.ws/';
+const TAPLINK_OFFLINE = 'https://bestmedgroup.ru/registr';
+const DIABETES_RISK_TEXT = 'Наличие сахарного диабета автоматически повышает сердечно-сосудистый риск. Для большинства пациентов с сахарным диабетом риск является высоким или очень высоким. Для более точного расчёта врач на приёме использует специальный калькулятор SCORE2-Diabetes.';
 let audioCtx = null;
 function initAudio() {
 if (!audioCtx) {
@@ -765,7 +790,6 @@ hemoglobin: null, mcv: null, ferritin: null, rbc: null, hematocrit: null,
 tsh: null, leukocytes: null, crp: null,
 calcium: null, albumin: null, pth: null, magnesium: null,
 testosterone: null, gspg: null, psa: null,
-diabetesAge: null,
 uric_acid: null, vitamin_d: null, vitamin_b12: null
 };
 const saved = storage.get('patientData');
@@ -789,6 +813,7 @@ dataModifiedViaWhatIf = false;
 }
 }
 function savePatient() { storage.set('patientData', JSON.stringify(patient)); }
+function displayName() { return patient.name ? patient.name : 'Дорогой гость'; }
 function getPos(level, type, direction) {
 if (type === 'risk') {
 if (level === 'low') return 15;
@@ -986,6 +1011,14 @@ if (v >= min && v <= max) return { level: 'low', text: 'Норма', ref: 'но�
 if (v < min) return { level: 'anemia', text: 'Снижен (анемия)', ref: 'ниже ' + min + '% — признаки анемии', pos: getPos('high','bi','low'), type: 'bi' };
 return { level: 'med', text: 'Повышен', ref: 'выше ' + max + '% — обезвоживание, эритроцитоз', pos: getPos('med','bi','high'), type: 'bi' };
 },
+rbc: function(v) {
+if (v === null || v === undefined || v === '') return null;
+const min = patient.sex === 'f' ? 3.8 : 4.3;
+const max = patient.sex === 'f' ? 5.1 : 5.7;
+if (v >= min && v <= max) return { level: 'low', text: 'Норма', ref: 'норма: ' + min + '–' + max + ' ×10¹²/л', pos: getPos('low','bi','high'), type: 'bi' };
+if (v < min) return { level: 'med', text: 'Снижены', ref: 'норма: ' + min + '–' + max + '; оценка вместе с гемоглобином', pos: getPos('med','bi','low'), type: 'bi' };
+return { level: 'med', text: 'Повышены', ref: 'норма: ' + min + '–' + max + '; обезвоживание, эритроцитоз', pos: getPos('med','bi','high'), type: 'bi' };
+},
 mcv: function(v) {
 if (v === null || v === undefined || v === '') return null;
 if (v >= 80 && v <= 100) return { level: 'low', text: 'Нормоцитоз', ref: 'норма: 80–100 фл', pos: getPos('low','bi','high'), type: 'bi' };
@@ -998,7 +1031,7 @@ const upper = patient.sex === 'f' ? 150 : 300;
 if (v < 30) return { level: 'high', text: 'Дефицит железа', ref: 'порог дефицита у взрослых: <30 нг/мл (ASH/EHA)', pos: getPos('high','bi','low'), type: 'bi' };
 if (v < 50) return { level: 'med', text: 'Умеренно снижен', ref: '30–50: функциональный дефицит при усталости, обильных менструациях', pos: getPos('med','bi','low'), type: 'bi' };
 if (v < 100) return { level: 'low', text: 'Норма', ref: 'норма: 50–' + upper + '; при воспалении/ХБП/ХСН порог повышается (до 100)', pos: getPos('low','bi','high'), type: 'bi' };
-if (v <= upper) return { level: 'low', text: 'Норма', ref: 'норма: до ' + upper + ' нг/мл', pct: getPct('low'), type: 'bi' };
+if (v <= upper) return { level: 'low', text: 'Норма', ref: 'норма: до ' + upper + ' нг/мл', pos: getPos('low','bi','high'), type: 'bi' };
 return { level: 'med', text: 'Повышен', ref: '>' + upper + ': исключить перегрузку железом, воспаление, болезни печени', pos: getPos('med','bi','high'), type: 'bi' };
 },
 tsh: function(v) {
@@ -1115,6 +1148,7 @@ return { level: 'high', text: 'Высокая' };
 }
 },
 findrisk: function() {
+if (patient.hasDiabetes) return null;
 if (!patient.age || !patient.weight || !patient.height || !patient.waist) return null;
 let s = 0;
 if (patient.age < 45) s += 0;
@@ -1141,7 +1175,7 @@ if (s === null) return { level: 'med', text: 'Недостаточно данн�
 if (s < 7) return { level: 'low', text: 'Низкий (' + s + ' баллов) — ~1% на 10 лет', pct: getPos('low','risk'), type: 'risk' };
 if (s < 15) return { level: 'med', text: 'Умеренный (' + s + ') — ~4-17% на 10 лет', pct: getPos('med','risk'), type: 'risk' };
 if (s < 21) return { level: 'high', text: 'Высокий (' + s + ') — ~33% на 10 лет', pct: getPos('high','risk'), type: 'risk' };
-return { level: 'high', text: 'Очень высокий (' + s + ') — ~50% на 10 лет', pct: getPos('high','risk',null,true), type: 'risk' };
+return { level: 'high', text: 'Очень высокий (' + s + ') — ~50% на 10 лет', pct: getPos('vhigh','risk'), type: 'risk' };
 },
 fib4: function() {
 if (!patient.alt || !patient.ast || !patient.platelets || !patient.age) return null;
@@ -1169,9 +1203,10 @@ if (v === null) return { level: 'med', text: 'Нет данных по креа�
 if (v >= 90) return { level: 'low', text: 'Норма (СКФ ' + Math.round(v) + ')', pct: getPos('low','risk'), type: 'risk' };
 if (v >= 60) return { level: 'med', text: 'Незначительно снижена (СКФ ' + Math.round(v) + ')', pct: getPos('med','risk'), type: 'risk' };
 if (v >= 45) return { level: 'high', text: 'Умеренно снижена (СКФ ' + Math.round(v) + ')', pct: getPos('high','risk'), type: 'risk' };
-return { level: 'high', text: 'Значительно снижена (СКФ ' + Math.round(v) + ') — нужна консультация', pct: getPos('high','risk',null,true), type: 'risk' };
+return { level: 'high', text: 'Значительно снижена (СКФ ' + Math.round(v) + ') — нужна консультация', pct: getPos('vhigh','risk'), type: 'risk' };
 },
 score2: function() {
+if (patient.hasDiabetes) return null;
 if (patient.age < 40) return { level: 'warn', text: 'Шкала SCORE2 валидна с 40 лет', pct: null, tooYoung: true, type: 'risk' };
 if (patient.age > 89) return { level: 'warn', text: 'Шкала SCORE2 валидна до 89 лет', pct: null, tooOld: true, type: 'risk' };
 if (!patient.sbp || !patient.cholesterol || !patient.hdl || !patient.age || !patient.sex)
@@ -1217,39 +1252,6 @@ else if (riskPct < 15) { level = 'med'; txt = 'Умеренный'; }
 else { level = 'high'; txt = 'Высокий'; }
 }
 return { level: level, text: txt + ' (~' + riskPct.toFixed(1) + '% на 10 лет)' + suffix, pct: getPos(level,'risk'), riskPct: riskPct, isOP: age >= 70, type: 'risk' };
-},
-score2diabetes: function() {
-if (!patient.hasDiabetes) return { level: 'warn', text: 'Шкала применяется только при сахарном диабете', pct: null, noDiabetes: true, type: 'risk' };
-if (patient.age < 40) return { level: 'warn', text: 'Шкала SCORE2-Diabetes валидна с 40 лет', pct: null, tooYoung: true, type: 'risk' };
-if (patient.age > 69) return { level: 'warn', text: 'Шкала SCORE2-Diabetes валидна до 69 лет', pct: null, tooOld: true, type: 'risk' };
-if (!patient.hba1c || !patient.age || !patient.sbp || !patient.cholesterol || !patient.hdl)
-return { level: 'med', text: 'Недостаточно данных', pct: null, type: 'risk' };
-const nonHDL = patient.cholesterol - patient.hdl;
-const age = patient.age;
-const smoking = patient.smoking ? 1 : 0;
-const sbp = patient.sbp;
-const hba1c_pct = patient.hba1c;
-const egfr = calc.egfr();
-const diabetesAge = patient.diabetesAge || (age - 5);
-const duration = Math.max(0, age - diabetesAge);
-let alpha, b1, b2, b3, b4, b5, b6, b7, St;
-if (patient.sex === 'm') {
-alpha = -9.62; b1 = 0.064; b2 = 0.46; b3 = 0.17; b4 = 0.12;
-b5 = 0.14; b6 = -0.08; b7 = -0.01; St = 0.9052;
-} else {
-alpha = -11.24; b1 = 0.068; b2 = 0.51; b3 = 0.21; b4 = 0.14;
-b5 = 0.16; b6 = -0.10; b7 = -0.01; St = 0.9447;
-}
-const egfrTerm = egfr ? (egfr/10) : 6;
-const linearPredictor = alpha + b1*age + b2*smoking + b3*(sbp/10) + b4*nonHDL + b5*hba1c_pct + b6*egfrTerm + b7*duration;
-const risk = 1 - Math.pow(St, Math.exp(linearPredictor));
-const riskPct = Math.max(0, Math.min(100, risk * 100));
-let level, txt;
-if (riskPct < 5) { level = 'low'; txt = 'Низкий'; }
-else if (riskPct < 10) { level = 'med'; txt = 'Умеренный'; }
-else if (riskPct < 20) { level = 'high'; txt = 'Высокий'; }
-else { level = 'high'; txt = 'Очень высокий'; }
-return { level: level, text: txt + ' (~' + riskPct.toFixed(1) + '% на 10 лет)', pct: getPos(level,'risk'), riskPct: riskPct, type: 'risk' };
 },
 biologicalAge: function() {
 if (!patient.age) return null;
@@ -1342,9 +1344,9 @@ console.error('toggleDiabetesCheck error:', e);
 const dialogNodes = {
 start: {
 text: function() {
-let greeting = 'Здравствуйте, ' + patient.name + '! ';
+let greeting = patient.name ? ('Здравствуйте, ' + patient.name + '! ') : 'Здравствуйте, дорогой гость! ';
 if (patient.hasDiabetes) {
-greeting += 'У вас установлен сахарный диабет — поэтому мы оценим сердечно-сосудистый риск по шкале SCORE2-Diabetes, а FINDRISC и обычный SCORE2 для вас не применяются. ';
+greeting += 'Вы отметили сахарный диабет — это важно для оценки рисков. ';
 }
 greeting += 'Давайте поговорим о вашем здоровье. Какие риски вас интересуют?';
 return greeting;
@@ -1355,7 +1357,7 @@ const opts = [
 { label: '🏥 Запись на очный прием (Краснодар)', next: 'taplinkOffline', taplink: true, doctor: true }
 ];
 if (patient.hasDiabetes) {
-opts.push({ label: 'Сердечно-сосудистый риск при диабете (SCORE2-D)', next: 'diabetes' });
+opts.push({ label: 'Сердечно-сосудистый риск при диабете', next: 'diabetes' });
 } else {
 opts.push({ label: 'Сердце и сосуды (SCORE2)', next: 'cvRisk' });
 opts.push({ label: 'Риск диабета (FINDRISC)', next: 'diabetes' });
@@ -1420,7 +1422,7 @@ return m.section === secKey;
 if (secItems.length === 0) return;
 let secHtml = '';
 secItems.forEach(function(m) {
-let v = patient[m.key];
+let v = m.isCalc ? calc.whtr() : patient[m.key];
 if (v === null || v === undefined || v === '') return;
 if (m.isCalc) {
 const r = refs.whtr(v);
@@ -1430,6 +1432,7 @@ secHtml += '<div class="report-item"><span>' + m.name + '</span><span class="val
 }
 return;
 }
+if (!refs[m.key]) return;
 if (m.useCorrected && patient.albumin !== null && patient.albumin !== undefined && patient.albumin !== '') {
 const corr = calcCorrectedCalcium(v, patient.albumin);
 if (corr !== null) {
@@ -1490,7 +1493,7 @@ goToForm: { action: function() { currentStep = 0; renderForm(currentStep); } },
 cvRisk: {
 text: function() {
 if (patient.hasDiabetes) {
-return 'У вас установлен сахарный диабет, поэтому для оценки сердечно-сосудистого риска применяется шкала <strong>SCORE2-Diabetes</strong>. Обычный SCORE2 и FINDRISC при диабете не используются. Перейдите в раздел «Риск диабета», чтобы увидеть SCORE2-D.';
+return '<div class="diabetes-info">' + DIABETES_RISK_TEXT + '</div>';
 }
 const whtr = calc.whtrRisk();
 const waistR = calc.waistRisk();
@@ -1507,6 +1510,9 @@ txt += '<div class="info-hint">Шкала SCORE2 валидна для возр�
 } else if (score2.tooOld) {
 txt += '<br><span class="risk warn">' + score2.text + '</span>';
 txt += '<div class="info-hint">Для возраста старше 89 лет формальный расчёт не проводится.</div>';
+} else if (score2.pct === null) {
+txt += '<br><span class="risk med">' + score2.text + '</span>';
+txt += '<div class="missing-data">Для расчёта SCORE2 нужны систолическое давление, общий холестерин и ЛПВП. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button></div>';
 } else {
 txt += renderRiskScale(score2.pct, score2.text, score2.type);
 txt += '<div class="info-hint">Расчёт по официальным коэффициентам ESC 2021 для региона «очень высокий риск» (РФ). Используется nonHDL-холестерин (общий − ЛПВП).</div>';
@@ -1514,22 +1520,25 @@ if (score2.level === 'high') {
 txt += '<div class="therapy-hint">💊 При высоком СС риске необходимо обсудить с врачом назначение статинов для снижения ЛПНП и риска инфаркта/инсульта.</div>';
 }
 }
-} else {
-txt += '<br><br><div class="missing-data">Для расчета SCORE2 нужны данные по давлению, общему холестерину и ЛПВП. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button></div>';
 }
 txt += patient.smoking ? '<br>Курение удваивает риск.' : '<br>Хорошо, что вы не курите.';
 return txt;
 },
-options: [
+options: function() {
+const opts = [
 { label: '📅 Запись на онлайн консультацию', next: 'taplinkOnline', taplink: true, doctor: true },
-{ label: '🏥 Запись на очный прием (Краснодар)', next: 'taplinkOffline', taplink: true, doctor: true },
-{ label: 'Что такое SCORE2?', next: 'score2exp' },
-{ label: 'Как снизить риск?', next: 'cvActions' },
-{ label: '← К выбору тем', next: 'start' }
-]
+{ label: '🏥 Запись на очный прием (Краснодар)', next: 'taplinkOffline', taplink: true, doctor: true }
+];
+if (!patient.hasDiabetes) {
+opts.push({ label: 'Что такое SCORE2?', next: 'score2exp' });
+opts.push({ label: 'Как снизить риск?', next: 'cvActions' });
+}
+opts.push({ label: '← К выбору тем', next: 'start' });
+return opts;
+}
 },
 score2exp: {
-text: function() { return 'SCORE2 — шкала ESC 2021 года. Оценивает 10-летний риск инфаркта, инсульта и других сосудистых событий. Валидна для возраста 40–89 лет. Использует возраст, пол, курение, САД и nonHDL-холестерин. Для 70+ — модификация SCORE2-OP. Расчёт по коэффициентам для региона «очень высокий риск» (РФ).'; },
+text: function() { return 'SCORE2 — шкала ESC 2021 года. Оценивает 10-летний риск инфаркта, инсульта и других сосудистых событий. Валидна для возраста 40–89 лет. Использует возраст, пол, курение, САД и nonHDL-холестерин. Для 70+ — модификация SCORE2-OP. Расчёт по коэффициентам для региона «очень высокий риск» (РФ). При уже установленном сахарном диабете эта шкала не применяется.'; },
 options: [
 { label: 'Понятно', next: 'cvRisk' },
 { label: '← К выбору тем', next: 'start' }
@@ -1544,22 +1553,7 @@ options: [
 diabetes: {
 text: function() {
 if (patient.hasDiabetes) {
-const s2d = calc.score2diabetes();
-let txt = 'У вас установлен сахарный диабет. Риск развития диабета (FINDRISC) не рассчитывается. Оцениваем сердечно-сосудистый риск по шкале SCORE2-Diabetes:<br><br>';
-if (s2d) {
-if (s2d.tooYoung || s2d.tooOld) {
-txt += '<span class="risk warn">' + s2d.text + '</span>';
-txt += '<div class="info-hint">Шкала SCORE2-Diabetes валидна для возраста 40-69 лет.</div>';
-} else {
-txt += '<span class="risk ' + s2d.level + '">' + s2d.text + '</span>.';
-txt += renderRiskScale(s2d.pct, 'Риск ССЗ при диабете по SCORE2-Diabetes', s2d.type);
-txt += '<div class="info-hint">Расчёт по официальным коэффициентам ESC 2023 для региона «очень высокий риск» (РФ). Категории риска: &lt;5% низкий, 5–10% умеренный, 10–20% высокий, ≥20% очень высокий.</div>';
-}
-} else {
-txt += '<div class="missing-data">Для SCORE2-Diabetes нужны HbA1c, давление, общий холестерин и ЛПВП. <button class="btn small secondary" onclick="app.goToStep(3)">Добавить анализы</button></div>';
-}
-txt += '<br><br>При диабете особенно важен строгий контроль давления, холестерина и HbA1c.';
-return txt;
+return 'У вас установлен сахарный диабет, поэтому риск развития диабета (FINDRISC) и обычный SCORE2 не рассчитываются.<div class="diabetes-info">' + DIABETES_RISK_TEXT + '</div>При диабете особенно важен строгий контроль давления, холестерина и HbA1c — цели лечения определяет врач индивидуально.';
 }
 const findrisk = calc.findriskText();
 let txt = 'Риск развития диабета 2 типа по FINDRISC: <span class="risk ' + findrisk.level + '">' + findrisk.text + '</span>.';
@@ -1567,7 +1561,7 @@ if (findrisk.pct !== null) txt += renderRiskScale(findrisk.pct, 'Риск раз
 if (findrisk.text === 'Недостаточно данных') {
 txt += '<div class="missing-data">Для расчета нужны рост, вес, талия. <button class="btn small secondary" onclick="app.goToStep(1)">Добавить данные</button></div>';
 }
-txt += '<br><br>Обычный SCORE2 и SCORE2-Diabetes при отсутствии диабета не рассчитываются. Для оценки СС-риска без диабета перейдите в раздел «Сердце и сосуды».';
+txt += '<br><br>Для оценки сердечно-сосудистого риска перейдите в раздел «Сердце и сосуды».';
 if (patient.familyDiabetes) txt += '<br><br>Наследственность утяжеляет прогноз, но образ жизни может компенсировать генетику.';
 return txt;
 },
@@ -1578,25 +1572,16 @@ const opts = [
 ];
 if (!patient.hasDiabetes) {
 opts.push({ label: 'Что такое FINDRISC?', next: 'findrisexp' });
+opts.push({ label: 'Как снизить риск?', next: 'dmActions' });
 } else {
-opts.push({ label: 'Что такое SCORE2-Diabetes?', next: 's2dexp' });
+opts.push({ label: 'Что делать прямо сейчас?', next: 'actions' });
 }
-opts.push(
-{ label: 'Как снизить риск?', next: 'dmActions' },
-{ label: '← К выбору тем', next: 'start' }
-);
+opts.push({ label: '← К выбору тем', next: 'start' });
 return opts;
 }
 },
 findrisexp: {
-text: function() { return 'FINDRISC — финский опросник для оценки риска развития диабета 2 типа в ближайшие 10 лет. Включает возраст, ИМТ, окружность талии, физическую активность, питание, приём антигипертензивных препаратов, эпизоды гипергликемии и наследственность. При 12 баллов и выше имеет смысл обсудить с врачом обследование: глюкозу натощак, HbA1c или глюкозотолерантный тест.'; },
-options: [
-{ label: 'Понятно', next: 'diabetes' },
-{ label: '← К выбору тем', next: 'start' }
-]
-},
-s2dexp: {
-text: function() { return 'SCORE2-Diabetes (2023) — шкала ESC для оценки 10-летнего риска ССЗ у пациентов с диабетом 2 типа. Валидна для возраста 40-69 лет. Использует возраст, пол, курение, САД, nonHDL-холестерин, HbA1c, СКФ и длительность диабета.'; },
+text: function() { return 'FINDRISC — финский опросник для оценки риска развития диабета 2 типа в ближайшие 10 лет. Включает возраст, ИМТ, окружность талии, физическую активность, питание, приём антигипертензивных препаратов, эпизоды гипергликемии и наследственность. При 12 баллов и выше имеет смысл обсудить с врачом обследование: глюкозу натощак, HbA1c или глюкозотолерантный тест. При уже установленном диабете опросник не применяется.'; },
 options: [
 { label: 'Понятно', next: 'diabetes' },
 { label: '← К выбору тем', next: 'start' }
@@ -1617,9 +1602,7 @@ options: [
 },
 liverKidney: {
 text: function() {
-const fib = calc.fib4();
 const fibText = calc.fib4Text();
-const egfr = calc.egfr();
 const egfrText = calc.egfrText();
 let txt = 'Печень по FIB-4: <span class="risk ' + fibText.level + '">' + fibText.text + '</span>.';
 if (fibText.pct !== null) txt += renderRiskScale(fibText.pct, 'Риск фиброза печени', fibText.type);
@@ -1725,9 +1708,9 @@ options: [
 },
 taplink: {
 action: function() {
-window.open(TAPLINK_URL, '_blank');
+window.open(TAPLINK_ONLINE, '_blank');
 dialogNodes._afterTaplink = {
-text: function() { return 'Открылась страница записи. Если вкладка не появилась — браузер заблокировал всплывающее окно.<br><br>Ссылка: <a href="' + TAPLINK_URL + '" target="_blank" style="color:var(--taplink);font-weight:600;">' + TAPLINK_URL + '</a>'; },
+text: function() { return 'Открылась страница записи. Если вкладка не появилась — браузер заблокировал всплывающее окно.<br><br>Ссылка: <a href="' + TAPLINK_ONLINE + '" target="_blank" style="color:var(--taplink);font-weight:600;">' + TAPLINK_ONLINE + '</a>'; },
 options: [
 { label: 'Спасибо, всё открылось', next: 'start' },
 { label: '← К выбору тем', next: 'start' }
@@ -1739,9 +1722,9 @@ renderDialog();
 },
 taplinkOnline: {
 action: function() {
-window.open('https://pystogovas.taplink.ws/', '_blank');
+window.open(TAPLINK_ONLINE, '_blank');
 dialogNodes._afterTaplink = {
-text: function() { return 'Открылась страница записи на онлайн-консультацию.<br><br>Ссылка: <a href="https://pystogovas.taplink.ws/" target="_blank" style="color:var(--taplink);font-weight:600;">https://pystogovas.taplink.ws/</a>'; },
+text: function() { return 'Открылась страница записи на онлайн-консультацию.<br><br>Ссылка: <a href="' + TAPLINK_ONLINE + '" target="_blank" style="color:var(--taplink);font-weight:600;">' + TAPLINK_ONLINE + '</a>'; },
 options: [ { label: '← К выбору тем', next: 'start' } ]
 };
 currentNode = '_afterTaplink';
@@ -1750,9 +1733,9 @@ renderDialog();
 },
 taplinkOffline: {
 action: function() {
-window.open('https://bestmedgroup.ru/registr', '_blank');
+window.open(TAPLINK_OFFLINE, '_blank');
 dialogNodes._afterTaplink = {
-text: function() { return 'Открылась страница записи на очный прием в Краснодаре.<br><br>Ссылка: <a href="https://bestmedgroup.ru/registr" target="_blank" style="color:var(--taplink);font-weight:600;">https://bestmedgroup.ru/registr</a>'; },
+text: function() { return 'Открылась страница записи на очный прием в Краснодаре.<br><br>Ссылка: <a href="' + TAPLINK_OFFLINE + '" target="_blank" style="color:var(--taplink);font-weight:600;">' + TAPLINK_OFFLINE + '</a>'; },
 options: [ { label: '← К выбору тем', next: 'start' } ]
 };
 currentNode = '_afterTaplink';
@@ -1769,7 +1752,7 @@ report: { action: function() { renderReport(); } },
 whatIf: { action: function() { renderWhatIf(); } },
 labChecklist: { action: function() { renderLabChecklist(); } },
 end: {
-text: function() { return 'Спасибо за беседу, ' + patient.name + '! Помните: эта консультация носит информационный характер и не заменяет очного приема. Берегите себя.'; },
+text: function() { return 'Спасибо за беседу, ' + displayName() + '! Помните: эта консультация носит информационный характер и не заменяет очного приема. Берегите себя.'; },
 options: [
 { label: '📅 Запись на онлайн консультацию', next: 'taplinkOnline', taplink: true, doctor: true },
 { label: '🏥 Запись на очный прием (Краснодар)', next: 'taplinkOffline', taplink: true, doctor: true },
@@ -1777,7 +1760,7 @@ options: [
 { label: 'Начать заново', next: 'resetAndStart' }
 ]
 },
-resetAndStart: { action: function() { location.reload(); } }
+resetAndStart: { action: function() { resetAll(); } }
 };
 let currentNode = 'start';
 let currentStep = 0;
@@ -1834,7 +1817,7 @@ html:
 '<option value="m"' + (patient.sex==='m'?' selected':'') + '>Мужской</option>' +
 '<option value="f"' + (patient.sex==='f'?' selected':'') + '>Женский</option>' +
 '</select></div>' +
-'<div class="field" style="margin-bottom:0"><label>Возраст, лет</label>' +
+'<div class="field" style="margin-bottom:0"><label>Возраст, лет *</label>' +
 '<input type="number" id="age" value="' + (patient.age || '') + '" min="18" max="100" placeholder="45"></div>' +
 '</div>' +
 '<div id="pregnantField" style="display:' + (patient.sex === 'f' ? 'block' : 'none') + '">' +
@@ -1851,32 +1834,32 @@ html:
 '</div>' +
 '</div>' +
 '<div class="row">' +
-'<div class="field"><label>Курите?</label>' +
+'<div class="field"><label>Курите? *</label>' +
 '<select id="smoking">' +
 '<option value="0"' + (!patient.smoking?' selected':'') + '>Нет</option>' +
 '<option value="1"' + (patient.smoking?' selected':'') + '>Да</option>' +
 '</select></div>' +
-'<div class="field"><label>Алкоголь (порций в неделю)</label>' +
-'<input type="text" id="alcohol" value="' + (patient.alcohol || 0) + '" placeholder="Например: 7">' +
-'<div class="hint">1 порция = 10 г чистого спирта ≈ 100 мл вина / 30 мл крепкого / 250 мл пива. Безопасной дозы алкоголя не существует.</div></div>' +
+'<div class="field"><label>Алкоголь (порций в неделю) *</label>' +
+'<input type="text" id="alcohol" value="' + (patient.alcohol || 0) + '" placeholder="0">' +
+'<div class="hint">Если не употребляете — оставьте 0. 1 порция = 10 г чистого спирта ≈ 100 мл вина / 30 мл крепкого / 250 мл пива. Безопасной дозы алкоголя не существует.</div></div>' +
 '</div>'
 },
 {
 title: 'Шаг 2 из 4: Тело, давление и диабет',
 html:
 '<div class="row">' +
-'<div class="field"><label>Рост, см</label>' +
+'<div class="field"><label>Рост, см *</label>' +
 '<input type="text" id="height" value="' + (patient.height || '') + '" placeholder="175"></div>' +
-'<div class="field"><label>Вес, кг</label>' +
+'<div class="field"><label>Вес, кг *</label>' +
 '<input type="text" id="weight" value="' + (patient.weight || '') + '" placeholder="80"></div>' +
-'<div class="field"><label>Талия, см</label>' +
+'<div class="field"><label>Талия, см *</label>' +
 '<input type="text" id="waist" value="' + (patient.waist || '') + '" placeholder="90">' +
 '<div class="hint">Измерять примерно на уровне пупка (участок посередине между нижними рёбрами и тазом), утром натощак, на выдохе. Норма: муж &lt;94, жен &lt;80 см</div></div>' +
 '</div>' +
 '<div class="row">' +
 '<div class="field"><label>Систолическое давление, мм рт.ст.</label>' +
 '<input type="text" id="sbp" value="' + (patient.sbp || '') + '" placeholder="120">' +
-'<div class="hint">Верхнее давление</div></div>' +
+'<div class="hint">Верхнее давление; нужно для SCORE2</div></div>' +
 '<div class="field"><label>Диастолическое давление, мм рт.ст.</label>' +
 '<input type="text" id="dbp" value="' + (patient.dbp || '') + '" placeholder="80">' +
 '<div class="hint">Нижнее давление</div></div>' +
@@ -1888,7 +1871,7 @@ html:
 '<div class="checkbox-icon">✓</div>' +
 '<div class="checkbox-label">' +
 '<span class="main-text">У меня сахарный диабет</span>' +
-'<span class="sub-text">При диабете FINDRISC и обычный SCORE2 не применяются — используется только SCORE2-Diabetes</span>' +
+'<span class="sub-text">Если диабета нет — оставьте галочку снятой. При диабете SCORE2 и FINDRISC не рассчитываются: риск оценивает врач индивидуально</span>' +
 '</div>' +
 '</div>' +
 '</label>' +
@@ -2064,11 +2047,6 @@ html:
 '<div class="hint">норма: 15–65</div></div>' +
 '</div>' +
 '<div id="maleFields"></div>' +
-'</div>' +
-'<div class="row">' +
-'<div class="field"><label>Возраст начала диабета, лет (если есть)</label>' +
-'<input type="text" id="diabetesAge" value="' + (patient.diabetesAge || '') + '" placeholder="55">' +
-'<div class="hint">для SCORE2-Diabetes; если нет диабета — оставьте пустым</div></div>' +
 '</div>'
 }
 ];
@@ -2077,7 +2055,9 @@ let html =
 '<div class="fade-in">' +
 '<div class="progress"><div class="progress-bar" style="width:' + ((step+1)*25) + '%"></div></div>' +
 '<h2 style="margin-top:0">' + s.title + '</h2>' +
+'<p style="color:var(--muted);font-size:13px;margin-top:0">* — обязательные поля для расчёта рисков</p>' +
 s.html +
+'<div id="formError"></div>' +
 '<div class="actions">' +
 (step > 0 ? '<button class="btn secondary" id="prevBtn">Назад</button>' : '') +
 '<button class="btn" id="nextBtn">' + (step < 3 ? 'Далее' : 'Сохранить и продолжить') + '</button>' +
@@ -2112,6 +2092,11 @@ if (nextBtn) {
 nextBtn.addEventListener('click', function() {
 try {
 playClick();
+const errors = validateStep(step);
+if (errors.length > 0) {
+showFormErrors(errors);
+return;
+}
 saveStep(currentStep);
 if (step === 0 && patient.sex === 'f' && patient.pregnant) {
 renderPregnancyStop();
@@ -2131,6 +2116,51 @@ alert('Ошибка при переходе: ' + e.message);
 });
 }
 }
+function validateStep(step) {
+const errors = [];
+const raw = function(id) {
+const el = document.getElementById(id);
+return el ? String(el.value).trim() : '';
+};
+const num = function(id) {
+const s = raw(id).replace(',', '.');
+if (s === '') return NaN;
+return parseFloat(s);
+};
+if (step === 0) {
+const age = num('age');
+if (!isFinite(age) || age <= 0) errors.push({ id: 'age', text: 'возраст' });
+const sm = document.getElementById('smoking');
+if (!sm || sm.value === '') errors.push({ id: 'smoking', text: 'статус курения' });
+const alc = num('alcohol');
+if (raw('alcohol') === '' || !isFinite(alc) || alc < 0) errors.push({ id: 'alcohol', text: 'алкоголь (порций в неделю; если не употребляете — 0)' });
+} else if (step === 1) {
+const h = num('height');
+if (!isFinite(h) || h <= 0) errors.push({ id: 'height', text: 'рост' });
+const w = num('weight');
+if (!isFinite(w) || w <= 0) errors.push({ id: 'weight', text: 'вес' });
+const wa = num('waist');
+if (!isFinite(wa) || wa <= 0) errors.push({ id: 'waist', text: 'окружность талии' });
+}
+return errors;
+}
+function showFormErrors(errors) {
+content.querySelectorAll('.field.error').forEach(function(f) { f.classList.remove('error'); });
+errors.forEach(function(e) {
+const el = document.getElementById(e.id);
+if (el) {
+const f = el.closest('.field');
+if (f) f.classList.add('error');
+}
+});
+const box = document.getElementById('formError');
+if (box) {
+box.innerHTML = '<div class="error-message">Не введены основные данные для расчёта рисков: ' +
+errors.map(function(e) { return e.text; }).join(', ') +
+'.<br>Заполните отмеченные поля. Остальные показатели (давление, анализы) можно оставить пустыми, если вы их не знаете.</div>';
+box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+}
 function saveStep(step) {
 try {
 const v = function(id) {
@@ -2138,7 +2168,7 @@ const el = document.getElementById(id);
 return el ? el.value : '';
 };
 if (step === 0) {
-patient.name = v('name').trim() || 'Пациент';
+patient.name = v('name').trim();
 patient.sex = v('sex') || 'm';
 patient.age = parseInt(v('age')) || 0;
 const pregEl = document.getElementById('pregnant');
@@ -2163,7 +2193,7 @@ patient.familyCancer = v('familyCancer') === '1';
 patient.familyTEP = v('familyTEP') === '1';
 patient.familyHipFracture = v('familyHipFracture') === '1';
 } else if (step === 3) {
-const fields = ['glucose','hba1c','cholesterol','ldl','hdl','triglycerides','creatinine','alt','ast','ggt','bilirubin','total_protein','platelets','hemoglobin','hematocrit','mcv','rbc','ferritin','crp','tsh','leukocytes','calcium','albumin','pth','magnesium','testosterone','gspg','psa','diabetesAge','uric_acid','vitamin_d','vitamin_b12','urea'];
+const fields = ['glucose','hba1c','cholesterol','ldl','hdl','triglycerides','creatinine','alt','ast','ggt','bilirubin','total_protein','platelets','hemoglobin','hematocrit','mcv','rbc','ferritin','crp','tsh','leukocytes','calcium','albumin','pth','magnesium','testosterone','gspg','psa','uric_acid','vitamin_d','vitamin_b12','urea'];
 fields.forEach(function(k) {
 const val = v(k);
 patient[k] = val ? safeParseFloat(val) : null;
@@ -2175,6 +2205,7 @@ console.error('saveStep error:', e);
 }
 function renderDialog() {
 const node = dialogNodes[currentNode];
+if (!node) { currentNode = 'start'; renderDialog(); return; }
 if (node.action) { node.action(); return; }
 const text = typeof node.text === 'function' ? node.text() : node.text;
 const options = typeof node.options === 'function' ? node.options() : node.options;
@@ -2236,26 +2267,25 @@ content.innerHTML =
 '<p style="margin-top:12px;font-style:italic;color:var(--muted)">После родов вы сможете вернуться к калькулятору.</p>' +
 '</div>' +
 '<div class="actions" style="justify-content:center;margin-top:24px">' +
-'<a class="btn taplink" href="https://pystogovas.taplink.ws/" target="_blank">📅 Записаться на приём</a>' +
+'<a class="btn taplink" href="' + TAPLINK_ONLINE + '" target="_blank">📅 Записаться на приём</a>' +
 '<button class="btn secondary" id="restartFromStop">Начать заново (не беременна)</button>' +
 '</div>' +
 '</div>';
 document.getElementById('restartFromStop').addEventListener('click', function() {
 playClick();
-location.reload();
+patient.pregnant = false;
+currentStep = 0;
+renderForm(currentStep);
 });
 }
 function renderReport() {
 const bioAge = calc.biologicalAge();
 const bmi = calc.bmi();
 const whtr = calc.whtr();
-const waistR = calc.waistRisk();
-const score2 = calc.score2();
-const s2d = calc.score2diabetes();
-const findrisk = calc.findriskText();
+const score2 = patient.hasDiabetes ? null : calc.score2();
+const findrisk = patient.hasDiabetes ? null : calc.findriskText();
 const fib4 = calc.fib4();
 const fib4Text = calc.fib4Text();
-const egfr = calc.egfr();
 const egfrText = calc.egfrText();
 const bmiInt = refs.bmi(bmi);
 const whtrInt = refs.whtr(whtr);
@@ -2273,9 +2303,6 @@ tips.push({t: '💊 Обсудить с врачом антигипертенз�
 }
 if (score2 && score2.level === 'high') {
 tips.push({t: '💊 Обсудить с врачом назначение статинов', d: 'Высокий 10-летний сердечно-сосудистый риск — показание к рассмотрению статинотерапии для снижения ЛПНП и риска инфаркта/инсульта. <strong>Рекомендуется консультация терапевта/кардиолога.</strong>'});
-}
-if (s2d && s2d.level === 'high') {
-tips.push({t: '💊 Обсудить с врачом назначение статинов', d: 'Высокий 10-летний сердечно-сосудистый риск при диабете — показание к статинотерапии. <strong>Рекомендуется консультация эндокринолога/кардиолога.</strong>'});
 }
 if ((patient.glucose !== null && patient.glucose >= 7.0) || (patient.hba1c !== null && patient.hba1c >= 6.5)) {
 tips.push({t: '💊 Обсудить с врачом сахароснижающую терапию', d: 'Уровень глюкозы ≥7.0 ммоль/л или HbA1c ≥6.5% соответствует критериям сахарного диабета. <strong>Требуется консультация эндокринолога.</strong>'});
@@ -2364,31 +2391,23 @@ if (patient.crp !== null && patient.crp >= 10) tips.push({t: 'Выявить и�
 if (patient.vitamin_d !== null && patient.vitamin_d < 30) tips.push({t: 'Обсудить с врачом приём витамина D', d: 'Уровень витамина D ниже 30 нг/мл — недостаточность или дефицит.'});
 if (patient.vitamin_b12 !== null && patient.vitamin_b12 < 300) tips.push({t: 'Уточнить статус витамина B12', d: 'Уровень B12 ниже 300 пг/мл — пограничный/дефицит.'});
 if (hasLabDeviations.length > 0) {
-tips.push({t: '👨‍⚕️ Консультация врача (терапевт/эндокринолог)', d: 'Выявлены отклонения в ' + hasLabDeviations.length + ' показател' + (hasLabDeviations.length === 1 ? 'е' : hasLabDeviations.length < 5 ? 'ях' : 'ях') + '. <strong>Настоятельно рекомендуется очная консультация терапевта или эндокринолога</strong> для уточнения диагноза, назначения дообследования и лечения.'});
+tips.push({t: '👨‍⚕️ Консультация врача (терапевт/эндокринолог)', d: 'Выявлены отклонения в ' + hasLabDeviations.length + ' показател' + (hasLabDeviations.length === 1 ? 'е' : 'ях') + '. <strong>Настоятельно рекомендуется очная консультация терапевта или эндокринолога</strong> для уточнения диагноза, назначения дообследования и лечения.'});
 }
 if (tips.length === 0) tips.push({t: 'Поддерживать текущий образ жизни', d: 'Вы молодец! Продолжайте в том же духе.'});
 let score2Html = '';
-let s2dHtml = '';
 let findriskHtml = '';
+let diabetesHtml = '';
 if (patient.hasDiabetes) {
-if (s2d) {
-if (s2d.tooYoung || s2d.tooOld) {
-s2dHtml = '<div class="report-item"><span>ССЗ при диабете (SCORE2-Diabetes)</span><span class="risk warn">' + s2d.text + '</span></div><div class="info-hint">Шкала валидна для возраста 40-69 лет.</div>';
-} else {
-s2dHtml = '<div class="report-item"><span>ССЗ при диабете (SCORE2-Diabetes)</span><span class="risk ' + s2d.level + '">' + s2d.text + '</span></div>' + renderRiskScale(s2d.pct, '', s2d.type);
-if (s2d.level === 'high') {
-s2dHtml += '<div class="therapy-hint">💊 При высоком СС риске необходимо обсудить с врачом назначение статинов.</div>';
-}
-}
-} else {
-s2dHtml = '<div class="report-item"><span>ССЗ при диабете (SCORE2-Diabetes)</span><span style="color:var(--muted)">нет данных</span></div>';
-}
+diabetesHtml = '<div class="diabetes-info"><strong>Сердечно-сосудистый риск при сахарном диабете.</strong><br>' + DIABETES_RISK_TEXT + '</div>' +
+'<div class="info-hint">В этом калькуляторе SCORE2 и FINDRISC при установленном диабете не рассчитываются.</div>';
 } else {
 if (score2) {
 if (score2.tooYoung) {
 score2Html = '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span class="risk warn">' + score2.text + '</span></div><div class="info-hint">Шкала валидна для возраста 40–89 лет.</div>';
 } else if (score2.tooOld) {
 score2Html = '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span class="risk warn">' + score2.text + '</span></div><div class="info-hint">Для возраста старше 89 лет формальный расчёт не проводится.</div>';
+} else if (score2.pct === null) {
+score2Html = '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span class="risk med">' + score2.text + '</span></div><div class="missing-data">Нужны систолическое давление, общий холестерин и ЛПВП.</div>';
 } else {
 score2Html = '<div class="report-item"><span>ССЗ за 10 лет (SCORE2' + (score2.isOP ? '-OP' : '') + ')</span><span class="risk ' + score2.level + '">' + score2.text + '</span></div>' + renderRiskScale(score2.pct, '', score2.type);
 if (score2.level === 'high') {
@@ -2462,6 +2481,7 @@ secHtml += '<div class="report-item"><span>' + it.name + '</span><span class="va
 }
 return;
 }
+if (!refs[it.key]) return;
 if (it.useCorrected && patient.albumin !== null && patient.albumin !== undefined && patient.albumin !== '') {
 const corr = calcCorrectedCalcium(v, patient.albumin);
 if (corr !== null) {
@@ -2533,16 +2553,11 @@ let pregnantWarning = '';
 if (patient.sex === 'f' && patient.pregnant) {
 pregnantWarning = '<div class="pregnant-warning"><strong>⚠️ Беременность:</strong> многие показатели имеют специальные референсы для беременных. Окончательная оценка — лечащим врачом с учётом срока беременности.</div>';
 }
-let diabetesBanner = '';
-if (patient.hasDiabetes) {
-diabetesBanner = '<div class="info-hint"><strong>ℹ️ Сахарный диабет:</strong> у пациента установлен диабет. FINDRISC и обычный SCORE2 не рассчитываются — используется только SCORE2-Diabetes для оценки сердечно-сосудистого риска.</div>';
-}
 content.innerHTML =
 '<div class="fade-in">' +
 modifiedBanner +
 pregnantWarning +
-diabetesBanner +
-'<h2 style="margin-top:0;color:var(--btn)">Персональный отчёт: ' + patient.name + '</h2>' +
+'<h2 style="margin-top:0;color:var(--btn)">Персональный отчёт: ' + displayName() + '</h2>' +
 '<p style="color:var(--muted);font-size:13px">Дата: ' + new Date().toLocaleDateString('ru-RU') + '</p>' +
 '<div class="bio-age-display">' +
 '<div class="bio-age-label">Ваш биологический возраст</div>' +
@@ -2555,9 +2570,9 @@ diabetesBanner +
 '</div>' +
 '<div class="report-section">' +
 '<h3>Оценка рисков</h3>' +
+diabetesHtml +
 score2Html +
 findriskHtml +
-s2dHtml +
 (fib4Text.pct !== null ? '<div class="report-item"><span>Фиброз печени (FIB-4)</span><span class="risk ' + fib4Text.level + '">' + fib4Text.text + '</span></div>' + renderRiskScale(fib4Text.pct, '', fib4Text.type) : '') +
 (egfrText.pct !== null ? '<div class="report-item"><span>Функция почек (СКФ)</span><span class="risk ' + egfrText.level + '">' + egfrText.text + '</span></div>' + renderRiskScale(egfrText.pct, '', egfrText.type) : '') +
 (bmiInt ? '<div class="report-item"><span>ИМТ</span><span class="val-block"><span class="risk ' + bmiInt.level + '">' + bmi.toFixed(1) + ' — ' + bmiInt.text + '</span><span class="ref-line">' + bmiInt.ref + '</span></span></div>' + renderRiskScale(bmiInt.pos, '', bmiInt.type) : '') +
@@ -2589,8 +2604,8 @@ return '<div class="report-item"><span>' + t.n + '</span><span class="test-statu
 '<strong>Важно:</strong> этот отчёт носит информационный характер и не заменяет очного приема врача.' +
 '</div>' +
 '<div class="actions stagger">' +
-'<a class="btn doctor" href="https://pystogovas.taplink.ws/" target="_blank">📅 Запись на онлайн консультацию</a>' +
-'<a class="btn doctor" href="https://bestmedgroup.ru/registr" target="_blank">🏥 Запись на очный прием (Краснодар)</a>' +
+'<a class="btn doctor" href="' + TAPLINK_ONLINE + '" target="_blank">📅 Запись на онлайн консультацию</a>' +
+'<a class="btn doctor" href="' + TAPLINK_OFFLINE + '" target="_blank">🏥 Запись на очный прием (Краснодар)</a>' +
 '<button class="btn accent" id="printBtn">🖨 Распечатать / PDF</button>' +
 '<button class="btn" id="whatIfBtn">Что если... (сценарии)</button>' +
 '<button class="btn secondary" id="labBtn">Чек-лист для лаборатории</button>' +
@@ -2627,14 +2642,18 @@ const origW = patient.weight, origSbp = patient.sbp, origA = patient.activity, o
 patient.weight = wi.weight; patient.sbp = wi.sbp; patient.activity = wi.activity; patient.smoking = wi.smoking; patient.waist = wi.waist;
 const s2 = patient.hasDiabetes ? null : calc.score2();
 const fr = patient.hasDiabetes ? null : calc.findriskText();
-const s2d = calc.score2diabetes();
 const bio = calc.biologicalAge();
 const bmi = calc.bmi();
 const whtr = calc.whtr();
 patient.weight = origW; patient.sbp = origSbp; patient.activity = origA; patient.smoking = origSm; patient.waist = origWaist;
-document.getElementById('wi-s2').innerHTML = s2 ? ((s2.tooYoung || s2.tooOld) ? '<span class="risk warn">' + s2.text + '</span>' : '<span class="risk ' + s2.level + '">' + s2.text + '</span>') : (patient.hasDiabetes ? '<span style="color:var(--muted)">не применяется при диабете</span>' : '<span style="color:var(--muted)">нет данных</span>');
-document.getElementById('wi-fr').innerHTML = fr ? (fr.pct !== null ? '<span class="risk ' + fr.level + '">' + fr.text + '</span>' : '<span style="color:var(--muted)">нет данных</span>') : (patient.hasDiabetes ? '<span style="color:var(--muted)">не применяется при диабете</span>' : '<span style="color:var(--muted)">нет данных</span>');
-document.getElementById('wi-s2d').innerHTML = s2d ? ((s2d.noDiabetes || s2d.tooYoung || s2d.tooOld) ? '<span class="risk warn">' + s2d.text + '</span>' : '<span class="risk ' + s2d.level + '">' + s2d.text + '</span>') : '<span style="color:var(--muted)">нет данных</span>';
+const s2El = document.getElementById('wi-s2');
+if (s2El) {
+s2El.innerHTML = s2 ? ((s2.tooYoung || s2.tooOld || s2.pct === null) ? '<span class="risk warn">' + s2.text + '</span>' : '<span class="risk ' + s2.level + '">' + s2.text + '</span>') : '<span style="color:var(--muted)">нет данных</span>';
+}
+const frEl = document.getElementById('wi-fr');
+if (frEl) {
+frEl.innerHTML = (fr && fr.pct !== null) ? '<span class="risk ' + fr.level + '">' + fr.text + '</span>' : '<span style="color:var(--muted)">нет данных</span>';
+}
 document.getElementById('wi-bio').textContent = bio ? bio + ' лет' : '—';
 document.getElementById('wi-bmi').textContent = bmi ? bmi.toFixed(1) : '—';
 document.getElementById('wi-whtr').textContent = whtr ? whtr.toFixed(2) : '—';
@@ -2657,8 +2676,7 @@ content.innerHTML =
 '</div>' +
 '<div class="report-section">' +
 '<h3>Как меняются риски</h3>' +
-(patient.hasDiabetes ? '' : '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span id="wi-s2">—</span></div><div class="report-item"><span>Диабет (FINDRISC)</span><span id="wi-fr">—</span></div>') +
-'<div class="report-item"><span>ССЗ при диабете (SCORE2-Diabetes)</span><span id="wi-s2d">—</span></div>' +
+(patient.hasDiabetes ? '<div class="diabetes-info">' + DIABETES_RISK_TEXT + '</div>' : '<div class="report-item"><span>ССЗ за 10 лет (SCORE2)</span><span id="wi-s2">—</span></div><div class="report-item"><span>Диабет (FINDRISC)</span><span id="wi-fr">—</span></div>') +
 '<div class="report-item"><span>ИМТ</span><span id="wi-bmi">—</span></div>' +
 '<div class="report-item"><span>Талия/рост</span><span id="wi-whtr">—</span></div>' +
 '<div class="report-item"><span>Биологический возраст</span><span id="wi-bio">—</span></div>' +
@@ -2702,6 +2720,11 @@ document.getElementById('wi-back').addEventListener('click', function() { playCl
 recalc();
 }
 function renderLabChecklist() {
+let checks = {};
+try {
+const savedChecks = storage.get('labChecks');
+if (savedChecks) checks = JSON.parse(savedChecks) || {};
+} catch(e) { checks = {}; }
 const tests = [
 {n: 'Общий анализ крови (ОАК)', r: 'Гемоглобин, гематокрит, MCV, эритроциты, лейкоциты, тромбоциты', d: patient.hemoglobin !== null || patient.leukocytes !== null || patient.platelets !== null},
 {n: 'Общий анализ мочи (ОАМ)', r: 'Базовый скрининг функции почек и мочевыводящих путей', d: false},
@@ -2739,8 +2762,9 @@ content.innerHTML =
 '<p style="color:var(--muted)">Отметьте, что уже сдавали. Список можно скопировать, сохранить или распечатать.</p>' +
 '<div id="checklist">' +
 filteredTests.map(function(t) {
-return '<div class="checklist-item">' +
-'<input type="checkbox" data-test="' + t.n + '">' +
+const isChecked = !!checks[t.n];
+return '<div class="checklist-item' + (isChecked ? ' done' : '') + '">' +
+'<input type="checkbox" data-test="' + t.n + '"' + (isChecked ? ' checked' : '') + '>' +
 '<div style="flex:1"><div class="test-name">' + t.n + '</div><div class="test-reason">' + t.r + '</div></div>' +
 '<span class="test-status' + (t.d ? ' done' : '') + '">' + (t.d ? '✓ уже есть' : 'рекомендуется') + '</span>' +
 '</div>';
@@ -2759,7 +2783,7 @@ cb.addEventListener('change', function() {
 playClick();
 checks[cb.getAttribute('data-test')] = cb.checked;
 cb.parentElement.classList.toggle('done', cb.checked);
-try { storage.set('labChecks', JSON.stringify(checks)); } catch(e) {}
+storage.set('labChecks', JSON.stringify(checks));
 });
 });
 document.getElementById('copyBtn').addEventListener('click', function() {
@@ -2769,7 +2793,7 @@ const cb = document.querySelector('#checklist input[data-test="' + t.n + '"]');
 const mark = cb && cb.checked ? '✓' : '○';
 return (i+1) + '. ' + mark + ' ' + t.n + ' — ' + t.r;
 }).join('\n');
-const full = 'Чек-лист анализов для ' + patient.name + ':\n' + list + '\nДата: ' + new Date().toLocaleDateString('ru-RU');
+const full = 'Чек-лист анализов для ' + displayName() + ':\n' + list + '\nДата: ' + new Date().toLocaleDateString('ru-RU');
 if (navigator.clipboard) {
 navigator.clipboard.writeText(full).then(function() {
 document.getElementById('copyBtn').textContent = '✓ Скопировано!';
@@ -2797,7 +2821,7 @@ document.getElementById('labBack').addEventListener('click', function() { playCl
 }
 function printChecklist(tests) {
 const dateStr = new Date().toLocaleDateString('ru-RU');
-const listHtml = tests.map(function(t, i) {
+const listHtml = tests.map(function(t) {
 return '<tr><td style="width:30px;font-size:16px">☐</td><td style="padding:8px 12px;font-size:15px;font-weight:500">' + t.n + '</td><td style="padding:8px 12px;font-size:13px;color:#666">' + t.r + '</td></tr>';
 }).join('');
 const printWindow = window.open('', '_blank', 'width=800,height=900');
@@ -2806,7 +2830,7 @@ alert('Браузер заблокировал всплывающее окно. 
 return;
 }
 printWindow.document.write(
-'<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Чек-лист анализов — ' + patient.name + '</title>' +
+'<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Чек-лист анализов — ' + displayName() + '</title>' +
 '<style>' +
 'body { font-family: Arial, sans-serif; padding: 30px; max-width: 800px; margin: 0 auto; color: #222; }' +
 'h1 { color: #2c5282; border-bottom: 2px solid #2c5282; padding-bottom: 10px; font-size: 22px; }' +
@@ -2821,11 +2845,11 @@ printWindow.document.write(
 '@media print { body { padding: 15px; } .no-print { display: none; } }' +
 '</style></head><body>' +
 '<h1>Направление на лабораторные исследования</h1>' +
-'<div class="header-info"><div><strong>Пациент:</strong> ' + patient.name + '</div><div><strong>Дата:</strong> ' + dateStr + '</div></div>' +
+'<div class="header-info"><div><strong>Пациент:</strong> ' + displayName() + '</div><div><strong>Дата:</strong> ' + dateStr + '</div></div>' +
 '<table>' + listHtml + '</table>' +
 '<div class="legend"><strong>Условные обозначения:</strong> ☐ — необходимо сдать. Референсные значения уточняйте в лаборатории.</div>' +
 '<div class="signature"><div>Подпись врача</div><div>Подпись пациента</div></div>' +
-'<div class="footer">Документ сформирован автоматически. Не является официальным медицинским направлением. Для записи: https://pystogovas.taplink.ws/</div>' +
+'<div class="footer">Документ сформирован автоматически. Не является официальным медицинским направлением. Для записи: ' + TAPLINK_ONLINE + '</div>' +
 '<div class="no-print" style="margin-top:20px;text-align:center"><button onclick="window.print()" style="padding:10px 20px;font-size:15px;cursor:pointer;background:#2c5282;color:#fff;border:none;border-radius:6px">🖨 Распечатать</button> <button onclick="window.close()" style="padding:10px 20px;font-size:15px;cursor:pointer;background:#edf2f7;color:#2d3748;border:none;border-radius:6px;margin-left:10px">Закрыть</button></div>' +
 '</body></html>'
 );
@@ -2836,7 +2860,7 @@ const dateStr = new Date().toLocaleDateString('ru-RU');
 const lines = [];
 lines.push('ЧЕК-ЛИСТ АНАЛИЗОВ');
 lines.push('===================');
-lines.push('Пациент: ' + patient.name);
+lines.push('Пациент: ' + displayName());
 lines.push('Дата: ' + dateStr);
 lines.push('');
 lines.push('СПИСОК АНАЛИЗОВ:');
@@ -2848,23 +2872,21 @@ lines.push('');
 });
 lines.push('===================');
 lines.push('Примечание: референсные значения уточняйте в лаборатории.');
-lines.push('Для записи на приём: https://pystogovas.taplink.ws/');
+lines.push('Для записи на приём: ' + TAPLINK_ONLINE);
 const text = lines.join('\n');
 const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
 const url = URL.createObjectURL(blob);
 const a = document.createElement('a');
 a.href = url;
-a.download = 'Чеклист_анализов_' + patient.name.replace(/\s+/g, '_') + '_' + dateStr.replace(/\./g, '-') + '.txt';
+a.download = 'Чеклист_анализов_' + displayName().replace(/\s+/g, '_') + '_' + dateStr.replace(/\./g, '-') + '.txt';
 document.body.appendChild(a);
 a.click();
 document.body.removeChild(a);
 URL.revokeObjectURL(url);
 }
 function resetAll() {
-try {
 storage.remove('patientData');
 storage.remove('labChecks');
-} catch(e) {}
 location.reload();
 }
 window.app = {
